@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title data-i18n="win.name">名牌文字</title>
+<style>
+  body { margin: 0; padding: 14px 16px; font: 13px/1.6 "Microsoft YaHei", "PingFang SC", sans-serif;
+         background: #f6f1e6; color: #2f2721; user-select: none; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  input { font: inherit; flex: 1; padding: 7px 9px; box-sizing: border-box; background: #fff;
+          border: 2px solid #2f2721; border-radius: 7px; }
+  .btns { margin-top: 12px; display: flex; gap: 8px; justify-content: flex-end; }
+  button { font: inherit; padding: 6px 18px; border: 2px solid #2f2721; border-radius: 8px;
+           background: #ffd75e; cursor: pointer; }
+  button.ghost { background: #fff; }
+  .hint { margin: 8px 0 0; font-size: 11px; color: #8a7f6d; }
+</style>
+</head>
+<body>
+<div class="row"><input id="v" maxlength="12" data-i18n-ph="name.ph" placeholder="留空就没有文字" autofocus></div>
+<div class="btns">
+  <button class="ghost" id="cancel" data-i18n="name.cancel">取消</button>
+  <button id="ok" data-i18n="name.ok">确定</button>
+</div>
+<p class="hint" data-i18n="name.hint">画不画这个名牌由右键菜单里的「显示名牌」开关决定。</p>
+<script src="../src/i18n.js"></script>
+<script src="name.js"></script>
+</body>
+</html>

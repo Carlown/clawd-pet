@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>clawd 调试台</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #f6f1e6; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #hint { position: fixed; left: 12px; top: 10px; font: 12px/1.6 "Segoe Print", "Microsoft YaHei", sans-serif;
+          color: #8a7f6d; background: rgba(255,255,255,.72); padding: 6px 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div id="hint"></div>
+<script src="../src/engine.js"></script>
+<script src="../clawd.js"></script>
+<script src="../src/i18n.js"></script>
+<script src="../src/settings.js"></script>
+<script src="../src/menu.js"></script>
+<script src="../src/pet.js"></script>
+<script src="dev.js"></script>
+</body>
+</html>

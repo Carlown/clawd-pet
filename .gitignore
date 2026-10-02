@@ -1,0 +1,23 @@
+node_modules/
+dist/
+
+# 编辑器/工具的本地元数据
+.freebuff/
+
+# 自签名用的私钥和证书链。绝对不能提交：
+# build/key.pem 是代码签名私钥，build/ca.key.pem 是根 CA 私钥。
+# 拿到这两份就能签出「看起来受信任」的任意 exe。（以前 .gitignore 只挡了 key.pem
+# 和 cert.pem，ca.key.pem 是漏的。）
+build/*.pem
+build/*.key
+build/*.p12
+build/*.pfx
+build/ca.srl
+build/signer.ext
+
+# 自检/调试跑出来的快照（每次跑都会变）
+build/pet-snapshot.png
+build/sheet-snapshot.png
+build/chat-thinking.png
+build/icon-roundtrip.png
+build/sheet-small.png

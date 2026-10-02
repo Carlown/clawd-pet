@@ -1,0 +1,51 @@
+{
+  "name": "clawd-pet",
+  "version": "0.1.0",
+  "description": "把 clawd.js 那只蜡笔小螃蟹做成桌面宠物",
+  "main": "app/main.js",
+  "private": true,
+  "scripts": {
+    "web": "node dev/serve.mjs",
+    "start": "electron .",
+    "dist": "electron-builder --win portable --publish never && node tools/patch-exe-icon.mjs && node tools/sign.mjs",
+    "sign": "node tools/sign.mjs",
+    "icon": "node tools/make-icon.mjs"
+  },
+  "devDependencies": {
+    "electron": "31.7.7",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.clawd.pet",
+    "productName": "ClawdPet",
+    "files": [
+      "app/**/*",
+      "src/**/*",
+      "dev/**/*",
+      "clawd.js",
+      "build/icon.ico",
+      "build/icon.png",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/koffi/**"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "ClawdPet-${version}.exe"
+    }
+  },
+  "allowScripts": {
+    "electron@31.7.7": true,
+    "koffi@3.3.2": true
+  },
+  "dependencies": {
+    "koffi": "^3.3.2"
+  }
+}

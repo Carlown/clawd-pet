@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title data-i18n="win.settings">ClawdPet 设置</title>
+<style>
+  body { margin: 0; padding: 18px 20px 24px; font: 14px/1.6 "Microsoft YaHei", "PingFang SC", sans-serif;
+         background: #f6f1e6; color: #2f2721; }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  h2 { font-size: 14px; margin: 20px 0 8px; padding-bottom: 5px; border-bottom: 2px solid #2f2721; }
+  .sub { color: #8a7f6d; font-size: 12px; margin-bottom: 6px; }
+  label.row { display: flex; align-items: center; gap: 8px; margin: 6px 0; cursor: pointer; }
+  label.row input[type=checkbox] { width: 16px; height: 16px; accent-color: #e8894c; }
+  .grid { display: grid; grid-template-columns: 92px 1fr; gap: 8px 10px; align-items: center; }
+  input[type=text], input[type=password], input[type=number], select, textarea {
+    font: inherit; width: 100%; box-sizing: border-box; padding: 6px 8px; background: #fff;
+    border: 2px solid #2f2721; border-radius: 7px; }
+  textarea { height: 74px; resize: vertical; }
+  .btns { margin-top: 20px; display: flex; gap: 10px; align-items: center; }
+  button { font: inherit; padding: 7px 16px; border: 2px solid #2f2721; border-radius: 8px;
+           background: #ffd75e; cursor: pointer; }
+  button.ghost { background: #fff; }
+  #msg { font-size: 12px; color: #8a7f6d; }
+  .hint { font-size: 12px; color: #8a7f6d; margin: 4px 0 0; }
+  code { background: #e8e0d0; padding: 1px 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1 data-i18n="win.settings">ClawdPet 设置</h1>
+<div class="sub" data-i18n="set.sub">改完点「保存」，桌宠立刻生效。</div>
+
+<h2 data-i18n="set.h.behavior">它的一举一动</h2>
+<!-- 注意：data-i18n 不能直接标在含 input 的 label 上（textContent 会把 input 抹掉），所以文字都包了一层 span -->
+<label class="row"><input type="checkbox" id="walk"><span data-i18n="set.l.walk">自主散步（没人管它也会自己走）</span></label>
+<label class="row"><input type="checkbox" id="drag"><span data-i18n="set.l.drag">可以拖拽（拎起来会晃腿，丢下去会弹一下）</span></label>
+<label class="row"><input type="checkbox" id="gravity"><span data-i18n="set.l.gravity">重力落地</span></label>
+<label class="row"><input type="checkbox" id="look"><span data-i18n="set.l.look">眼神跟着鼠标</span></label>
+<label class="row"><input type="checkbox" id="idle"><span data-i18n="set.l.idle">待机小动作（久坐会睡着冒 z）</span></label>
+<label class="row"><input type="checkbox" id="bubble"><span data-i18n="set.l.bubble">说话气泡</span></label>
+<label class="row"><input type="checkbox" id="dance"><span data-i18n="set.l.dance">踩点跳舞</span></label>
+<label class="row"><input type="checkbox" id="peek"><span data-i18n="set.l.peek">切窗口就探头（它会爬到那个窗口的标题栏上张望）</span></label>
+<label class="row"><input type="checkbox" id="idleGreet"><span data-i18n="set.l.idleGreet">回来时打招呼（你锁屏走开再回来，它换个姿势迎你）</span></label>
+<p class="hint" id="peekStatus" data-i18n="set.peek.testing">正在检测能不能读到前台窗口…</p>
+<label class="row"><input type="checkbox" id="showName"><span data-i18n="set.l.showName">显示名牌（名字写在下面那栏）</span></label>
+
+<h2 data-i18n="set.h.look">长什么样</h2>
+<div class="grid">
+  <label for="hat" data-i18n="set.f.hat">帽子</label>
+  <select id="hat">
+    <option value="" data-i18n="set.f.none">不戴</option>
+    <option value="party" data-i18n="hat.party">派对帽</option>
+    <option value="beret" data-i18n="hat.beret">贝雷帽</option>
+    <option value="hard" data-i18n="hat.hard">安全帽</option>
+    <option value="cap" data-i18n="hat.cap">棒球帽</option>
+    <option value="crown" data-i18n="hat.crown">小皇冠</option>
+    <option value="night" data-i18n="hat.night">睡帽</option>
+    <option value="headphones" data-i18n="hat.headphones">耳机</option>
+  </select>
+  <label for="color" data-i18n="set.f.color">体色</label>
+  <select id="color">
+    <option value="" data-i18n="color.none">黏土橙</option>
+    <option value="#f2c14e" data-i18n="color.yellow">柠檬黄</option>
+    <option value="#8ed2f7" data-i18n="color.blue">天空蓝</option>
+    <option value="#c4a8ff" data-i18n="color.lavender">薰衣草</option>
+    <option value="#7ecb8f" data-i18n="color.mint">薄荷绿</option>
+    <option value="#ff9db3" data-i18n="color.pink">草莓粉</option>
+    <option value="#d9d2c5" data-i18n="color.cream">牛奶灰</option>
+  </select>
+  <label for="size" data-i18n="set.f.size">大小 px</label>
+  <select id="size"><option>90</option><option>120</option><option>150</option><option>200</option><option>260</option></select>   <!-- 必须和 src/settings.js 的 SIZE_CHOICES 一致 -->
+  <label for="name" data-i18n="set.f.name">名牌文字</label>
+  <input type="text" id="name" maxlength="12" data-i18n-ph="set.f.namePh" placeholder="留空就没有文字">
+  <label for="lang" data-i18n="set.f.lang">语言</label>
+  <select id="lang">
+    <option value="zh" data-i18n="lang.zh">中文</option>
+    <option value="en" data-i18n="lang.en">English</option>
+  </select>
+</div>
+
+<h2 data-i18n="set.h.win">窗口</h2>
+<label class="row"><input type="checkbox" id="clickThrough"><span data-i18n="set.l.clickThrough">鼠标穿透（平时不挡桌面，鼠标碰到它才可点）</span></label>
+<label class="row"><input type="checkbox" id="alwaysOnTop"><span data-i18n="set.l.alwaysOnTop">总在最前</span></label>
+<label class="row"><input type="checkbox" id="autoLaunch"><span data-i18n="set.l.autoLaunch">开机自动启动</span></label>
+
+<h2 data-i18n="set.h.chat">说话（API 随便填，不限官方）</h2>
+<label class="row"><input type="checkbox" id="chat"><span data-i18n="set.l.chat">启用对话功能（关掉后，双击它和右键「聊两句…」都不会开聊天窗）</span></label>
+<div class="grid" style="margin-top:8px">
+  <label for="apiProvider" data-i18n="set.f.provider">格式</label>
+  <select id="apiProvider">
+    <option value="auto" data-i18n="set.f.providerAuto">自动探测（先 Anthropic，不通换 OpenAI）</option>
+    <option value="anthropic" data-i18n="set.f.providerAnthropic">Anthropic 格式 /v1/messages</option>
+    <option value="openai" data-i18n="set.f.providerOpenAI">OpenAI 格式 /v1/chat/completions</option>
+  </select>
+  <label for="apiBase" data-i18n="set.f.apiBase">接口地址</label>
+  <input type="text" id="apiBase" data-i18n-ph="set.f.apiBasePh" placeholder="https://api.anthropic.com 或你的中转地址">
+  <label for="apiModel" data-i18n="set.f.apiModel">模型名</label>
+  <input type="text" id="apiModel" data-i18n-ph="set.f.apiModelPh" placeholder="例如 claude-sonnet-4-5 / gpt-4o / 你的中转模型 id">
+  <label for="apiKey" data-i18n="set.f.apiKey">API Key</label>
+  <input type="password" id="apiKey" data-i18n-ph="set.f.apiKeyPh" placeholder="用系统钥匙串加密后存本地">
+  <label for="temperature" data-i18n="set.f.temperature">温度</label>
+  <input type="number" id="temperature" min="0" max="2" step="0.1">
+  <label for="systemPrompt" data-i18n="set.f.systemPrompt">人设</label>
+  <textarea id="systemPrompt"></textarea>
+</div>
+<p class="hint" data-i18n="set.hint.api">地址可以只写到 <code>https://xxx.com</code>、<code>https://xxx.com/v1</code>，也可以直接粘完整的 <code>/v1/messages</code> 或 <code>/v1/chat/completions</code>。Key 只存在本机，用 Electron safeStorage 加密。</p>
+
+<div class="btns">
+  <button id="save" data-i18n="set.save">保存</button>
+  <button class="ghost" id="test" data-i18n="set.test">测试连接</button>
+  <button class="ghost" id="reset" data-i18n="set.reset">恢复默认</button>
+  <span id="msg"></span>
+</div>
+
+<script src="../src/i18n.js"></script>
+<script src="settings.js"></script>
+</body>
+</html>
