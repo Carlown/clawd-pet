@@ -1,8 +1,10 @@
 # ClawdPet 🦀
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 把 [clawd.js](clawd.js) 那只蜡笔小螃蟹做成真正的桌面宠物：透明置顶浮在桌面上，会自己散步、被拖着会晃腿、丢下去会弹一下、久坐会睡着冒 z、鼠标靠近会醒。
 
-**clawd.js 一行没改。** 原文件是某个 canvas 工程拆出来的角色模块，它依赖的 20 多个全局函数（`PAL` / `MX` / `sh` / `ink` / `hand` / `beatInfo` …）原工程没跟过来，所以这个仓库做了两件事：
+**clawd.js 一行未改。** 原文件是某个 canvas 工程拆出来的角色模块，它依赖的 20 多个全局函数（`PAL` / `MX` / `sh` / `ink` / `hand` / `beatInfo` …）原工程没跟过来，所以这个仓库做了两件事：
 
 1. 按调用点把这套**蜡笔涂鸦渲染引擎**反推补齐（[src/engine.js](src/engine.js)）；
 2. 给它加一层**桌宠行为**（散步 / 物理 / 交互 / 气泡），再用 Electron 套上透明窗口。
@@ -340,6 +342,14 @@ if (d.moved < 7) {
 渲染进程里也不用 `window.confirm`/`alert`/`prompt` 了：Electron 对这几个的实现不可靠，统一走主进程的原生对话框（`ui:confirm`）或专门的小窗口（名牌文字）。
 
 还有一点：菜单关掉时会先 `win.blur()` 再收回「不可聚焦」—— 不然焦点可能留在桌宠身上，你接下来敲键盘像掉进黑洞，观感上也像卡死。
+
+## 许可与出处
+
+本仓库以 **MIT** 许可证发布（见 [LICENSE](LICENSE)）。
+
+`clawd.js` 是原角色模块，来自另一个 Claude 生成的 canvas 工程，**本身没有附带许可证声明**。它由本项目作者取得，并随本仓库一同以 MIT 发布。如果你认为它另有出处，请提 issue。
+
+除此之外的所有文件——蜡笔渲染引擎（[src/engine.js](src/engine.js)）、桌宠行为层（[src/pet.js](src/pet.js)）、Electron 外壳、打包与签名工具——都是为这个仓库写的。
 
 ## 目录
 
