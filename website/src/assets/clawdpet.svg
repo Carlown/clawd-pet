@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="55 225 1170 820" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="clawd-dark" x1="480" y1="255" x2="700" y2="1010" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#401608"/>
+      <stop offset="1" stop-color="#260A04"/>
+    </linearGradient>
+    <linearGradient id="clawd-body" x1="395" y1="285" x2="785" y2="850" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFA447"/>
+      <stop offset="0.42" stop-color="#FF8D2C"/>
+      <stop offset="1" stop-color="#F36C17"/>
+    </linearGradient>
+    <linearGradient id="clawd-edge" x1="280" y1="280" x2="850" y2="870" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFC565"/>
+      <stop offset="0.55" stop-color="#FFA33D"/>
+      <stop offset="1" stop-color="#F78124"/>
+    </linearGradient>
+    <linearGradient id="clawd-limb" x1="320" y1="550" x2="430" y2="1020" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF9B36"/>
+      <stop offset="1" stop-color="#F5781D"/>
+    </linearGradient>
+    <linearGradient id="clawd-shine" x1="405" y1="288" x2="470" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0D9" stop-opacity="0.84"/>
+      <stop offset="1" stop-color="#FFE6CC" stop-opacity="0.58"/>
+    </linearGradient>
+    <linearGradient id="clawd-blush" x1="320" y1="584" x2="370" y2="650" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFBABD"/>
+      <stop offset="1" stop-color="#FFA1A5"/>
+    </linearGradient>
+  </defs>
+  <g class="pet-arm-left">
+    <path d="M242 529L108 550Q87 553 91 579L108 705Q111 725 132 721L250 700Z" fill="url(#clawd-limb)" stroke="url(#clawd-dark)" stroke-width="27" stroke-linejoin="round"/>
+    <path d="M114 566L236 548L217 682L127 697" stroke="#FFBE60" stroke-width="13" stroke-linecap="round" opacity="0.78"/>
+  </g>
+  <g class="pet-arm-right">
+    <path d="M1009 528L1146 551Q1168 554 1163 579L1146 706Q1143 726 1122 721L1004 700Z" fill="url(#clawd-limb)" stroke="url(#clawd-dark)" stroke-width="27" stroke-linejoin="round"/>
+    <path d="M1022 549L1138 567L1123 696L1046 681" stroke="#FFBF63" stroke-width="13" stroke-linecap="round" opacity="0.75"/>
+  </g>
+  <g class="pet-feet">
+    <rect x="299" y="807" width="81" height="200" rx="17" fill="url(#clawd-limb)" stroke="url(#clawd-dark)" stroke-width="26"/>
+    <rect x="406" y="807" width="78" height="200" rx="17" fill="url(#clawd-limb)" stroke="url(#clawd-dark)" stroke-width="26"/>
+    <rect x="765" y="807" width="79" height="200" rx="17" fill="url(#clawd-limb)" stroke="url(#clawd-dark)" stroke-width="26"/>
+    <rect x="872" y="807" width="79" height="200" rx="17" fill="url(#clawd-limb)" stroke="url(#clawd-dark)" stroke-width="26"/>
+    <path d="M314 866H350V984H314Z" fill="#FFAD47" opacity="0.42"/>
+    <path d="M422 866H456V984H422Z" fill="#FFAD47" opacity="0.42"/>
+    <path d="M781 866H816V984H781Z" fill="#FFAD47" opacity="0.42"/>
+    <path d="M888 866H922V984H888Z" fill="#FFAD47" opacity="0.42"/>
+  </g>
+  <rect x="244" y="261" width="761" height="572" rx="80" fill="url(#clawd-dark)" stroke="url(#clawd-dark)" stroke-width="25"/>
+  <rect x="259" y="278" width="731" height="546" rx="57" fill="url(#clawd-body)" stroke="url(#clawd-edge)" stroke-width="7"/>
+  <rect x="277" y="294" width="695" height="511" rx="45" stroke="#FFBF62" stroke-width="14" opacity="0.29"/>
+  <path d="M283 350C289 316 313 294 348 294H651C681 294 687 312 676 333L667 349C662 356 653 359 641 359H346C329 359 321 365 317 377C311 393 291 385 286 374C281 365 280 359 283 350Z" fill="url(#clawd-shine)"/>
+  <path d="M301 336C308 321 317 312 330 307" stroke="#FFF6E9" stroke-width="27" stroke-linecap="round" opacity="0.63"/>
+  <g class="pet-eye pet-eye-left">
+    <rect x="363" y="426" width="69" height="155" rx="35" fill="url(#clawd-dark)"/>
+    <circle cx="391" cy="464" r="15" fill="#FFF"/>
+    <circle cx="388" cy="459" r="7" fill="#FFF" opacity="0.8"/>
+  </g>
+  <g class="pet-eye pet-eye-right">
+    <rect x="819" y="426" width="69" height="155" rx="35" fill="url(#clawd-dark)"/>
+    <circle cx="847" cy="464" r="15" fill="#FFF"/>
+    <circle cx="844" cy="459" r="7" fill="#FFF" opacity="0.8"/>
+  </g>
+  <ellipse cx="349" cy="614" rx="62" ry="35" fill="url(#clawd-blush)"/>
+  <ellipse cx="904" cy="614" rx="62" ry="35" fill="url(#clawd-blush)"/>
+  <ellipse cx="327" cy="598" rx="20" ry="10" transform="rotate(-12 327 598)" fill="#FFE1DC" opacity="0.78"/>
+  <ellipse cx="882" cy="598" rx="20" ry="10" transform="rotate(-12 882 598)" fill="#FFE1DC" opacity="0.78"/>
+  <path class="pet-mouth" d="M587 585L626 622L668 585" stroke="url(#clawd-dark)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
