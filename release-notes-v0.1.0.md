@@ -1,6 +1,8 @@
 ## 第一次发出来
 
-把 [clawd.js](https://github.com/Carlown/clawd-pet) 那只蜡笔小螃蟹做成了真正的 Windows 桌面宠物。**clawd.js 一行没改** —— 原文件是某个 canvas 工程拆出来的角色模块，它依赖的 20 多个全局函数（`PAL` / `MX` / `sh` / `ink` / `hand` / `beatInfo` …）原工程没跟过来，所以这个仓库做了两件事：按调用点把这套**蜡笔涂鸦渲染引擎**反推补齐，再给它加一层**桌宠行为**（散步 / 物理 / 交互 / 气泡）。
+![桌宠在桌面上自己走来走去](https://raw.githubusercontent.com/Carlown/clawd-pet/main/docs/demo.gif)
+
+把 [clawd.js](https://github.com/Carlown/clawd-pet) 那只蜡笔小螃蟹做成了真正的 Windows 桌面宠物。**clawd.js 一行未改** —— 原文件是某个 canvas 工程拆出来的角色模块，它依赖的 20 多个全局函数（`PAL` / `MX` / `sh` / `ink` / `hand` / `beatInfo` …）原工程没跟过来，所以这个仓库做了两件事：按调用点把这套**蜡笔涂鸦渲染引擎**反推补齐，再给它加一层**桌宠行为**（散步 / 物理 / 交互 / 气泡）。
 
 ### 下载
 
