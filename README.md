@@ -347,14 +347,14 @@ if (d.moved < 7) {
 
 本仓库以 **MIT** 许可证发布（见 [LICENSE](LICENSE)）。
 
-`clawd.js` 是原角色模块，来自另一个 Claude 生成的 canvas 工程，**本身没有附带许可证声明**。它由本项目作者取得，并随本仓库一同以 MIT 发布。如果你认为它另有出处，请提 issue。
+`clawd.js` 是原角色模块，来自另一个 Claude 生成的 canvas 工程，**本身没有附带许可证声明**。它由本项目作者取得，并随本仓库一同以 MIT 发布。本仓库对它一行未改。如果你认为它另有出处，请提 issue。完整说明见 [NOTICE](NOTICE)。
 
 除此之外的所有文件——蜡笔渲染引擎（[src/engine.js](src/engine.js)）、桌宠行为层（[src/pet.js](src/pet.js)）、Electron 外壳、打包与签名工具——都是为这个仓库写的。
 
 ## 目录
 
 ```
-clawd.js            原角色模块，一行未改
+clawd.js            原角色模块，一行未改（出处见 NOTICE）
 src/engine.js       蜡笔渲染引擎：调色板 / 仿射矩阵 / 几何取点 / 抖动路径光栅器 / 手写字 / 节拍时钟
 src/pet.js          桌宠行为：状态机 idle-walk-drag-fall-land-sleep-dance-chase-climb-peek-greet + 物理 + 气泡 + 命中检测
 src/i18n.js         中英文文案表：t()/lines()/applyI18n()，渲染进程与主进程共用一份

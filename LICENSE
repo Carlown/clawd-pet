@@ -19,11 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-关于 clawd.js
-
-本仓库里的 clawd.js（原角色模块，本仓库一行未改）来自另一个 Claude 生成的
-canvas 工程，本身没有附带许可证声明。它由本项目作者取得并随本仓库一同以
-上述 MIT 许可证发布。若你认为它另有出处或授权，请提 issue。
