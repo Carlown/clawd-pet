@@ -2,7 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![桌宠在桌面上自己走来走去](docs/demo.gif)
+<p align="center">
+  <img src="docs/demo.gif" alt="桌宠在桌面上自己走来走去" width="600">
+</p>
 
 把 [clawd.js](clawd.js) 那只蜡笔小螃蟹做成真正的桌面宠物：透明置顶浮在桌面上，会自己散步、被拖着会晃腿、丢下去会弹一下、久坐会睡着冒 z、鼠标靠近会醒。
 
