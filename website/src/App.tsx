@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'framer-motion';
 import {
   ArrowDown, ArrowRight, ArrowUpRight, Check, Download,
-  Hand, Heart, Menu, Moon, MousePointer2, Plus,
+  Globe2, Hand, Heart, Menu, Moon, MousePointer2, Plus,
   RotateCcw, Volume2, VolumeX, X,
 } from 'lucide-react';
 import PetGraphic, { type PetMood } from './components/PetGraphic';
 import petLogo from './assets/clawdpet.svg';
-import { downloadOfflinePet } from './lib/downloadPet';
+import { langLabel, setLang, useLang, type Lang } from './i18n';
 
 const repoUrl = 'https://github.com/Carlown/clawd-pet';
 // v0.1.0 的真实产物：单文件 portable，自签名，68MB，不用安装。
@@ -41,15 +41,80 @@ function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; 
 }
 
 function Brand({ className = '' }: { className?: string }) {
+  const { t } = useLang();
   return (
-    <a className={`brand ${className}`} href="#top" aria-label="ClawdPet 首页">
+    <a className={`brand ${className}`} href="#top" aria-label={t('brand.aria')}>
       <img src={petLogo} alt="" width="42" height="32" />
       <span>ClawdPet</span>
     </a>
   );
 }
 
+// 语言切换：地球按钮弹下拉。首次打开按浏览器语言自动定，用户选过就以他的选择为准。
+function LangMenu() {
+  const { lang, t } = useLang();
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!wrapRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  const pick = (next: Lang) => {
+    setLang(next);
+    setOpen(false);
+  };
+
+  return (
+    <div className="lang-menu" ref={wrapRef}>
+      <button
+        className="lang-trigger" ref={triggerRef} aria-haspopup="listbox" aria-expanded={open}
+        aria-label={t('nav.lang')} onClick={() => setOpen((value) => !value)}
+      >
+        <Globe2 size={17} strokeWidth={1.6} aria-hidden="true" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.ul
+            className="lang-options" role="listbox" aria-label={t('nav.lang')}
+            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+          >
+            {(['zh', 'en'] as const).map((option) => (
+              <li key={option}>
+                <button
+                  role="option" aria-selected={lang === option} lang={option === 'zh' ? 'zh-CN' : 'en'}
+                  className={lang === option ? 'is-active' : ''} onClick={() => pick(option)}
+                >
+                  {langLabel(option)}
+                  {lang === option && <Check size={13} strokeWidth={2} aria-hidden="true" />}
+                </button>
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function Header({ onAdopt }: { onAdopt: () => void }) {
+  const { t } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeMenu = () => setMenuOpen(false);
@@ -70,21 +135,22 @@ function Header({ onAdopt }: { onAdopt: () => void }) {
     <header className="site-header">
       <div className="container header-inner">
         <Brand />
-        <nav className={`main-nav ${menuOpen ? 'is-open' : ''}`} id="main-navigation" aria-label="主导航">
-          <a href="#about" onClick={closeMenu}>认识 ClawdPet</a>
-          <a href="#playground" onClick={closeMenu}>和它玩玩</a>
-          <a href="#faq" onClick={closeMenu}>常见问题</a>
+        <nav className={`main-nav ${menuOpen ? 'is-open' : ''}`} id="main-navigation" aria-label={t('nav.label')}>
+          <a href="#about" onClick={closeMenu}>{t('nav.about')}</a>
+          <a href="#playground" onClick={closeMenu}>{t('nav.playground')}</a>
+          <a href="#faq" onClick={closeMenu}>{t('nav.faq')}</a>
         </nav>
         <div className="header-actions">
-          <a className="github-link" href={repoUrl} target="_blank" rel="noreferrer" aria-label="在 GitHub 上查看 ClawdPet 的源码">
+          <LangMenu />
+          <a className="github-link" href={repoUrl} target="_blank" rel="noreferrer" aria-label={t('nav.github')}>
             <GithubIcon />
             <span>GitHub</span>
             <ArrowUpRight size={13} aria-hidden="true" />
           </a>
           <button className="button nav-adopt" onClick={() => { closeMenu(); onAdopt(); }}>
-            <Download size={15} strokeWidth={1.8} aria-hidden="true" />领养一只
+            <Download size={15} strokeWidth={1.8} aria-hidden="true" />{t('nav.adopt')}
           </button>
-          <button className="menu-toggle icon-button" ref={menuButtonRef} onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="main-navigation" aria-label={menuOpen ? '关闭菜单' : '打开菜单'}>
+          <button className="menu-toggle icon-button" ref={menuButtonRef} onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="main-navigation" aria-label={menuOpen ? t('nav.menuClose') : t('nav.menuOpen')}>
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
@@ -94,6 +160,7 @@ function Header({ onAdopt }: { onAdopt: () => void }) {
 }
 
 function Hero({ onAdopt }: { onAdopt: () => void }) {
+  const { t } = useLang();
   const reducedMotion = useReducedMotion();
   const [mood, setMood] = useState<PetMood>('idle');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -121,19 +188,19 @@ function Hero({ onAdopt }: { onAdopt: () => void }) {
       <div className="container hero-inner">
         <motion.div className="hero-copy" initial={{ opacity: 0, y: reducedMotion ? 0 : 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}>
           <h1 className="hero-brand" id="hero-title">ClawdPet<span className="brand-period">.</span></h1>
-          <p className="hero-tagline">你的桌面，<br />多了一点<span className="accent-word">可爱。</span></p>
-          <p className="hero-description">一只住在 Windows 桌面上的蜡笔小螃蟹。<br />自己散步、久坐打盹，还会爬上你的窗口探头张望。</p>
+          <p className="hero-tagline">{t('hero.tagline1')}<br />{t('hero.tagline2')}<span className="accent-word">{t('hero.accent')}</span></p>
+          <p className="hero-description">{t('hero.desc1')}<br />{t('hero.desc2')}</p>
           <div className="hero-cta">
-            <button className="button button-dark" onClick={onAdopt}><Download size={17} strokeWidth={1.8} aria-hidden="true" />领养 ClawdPet</button>
-            <a className="button button-outline" href="#playground">先认识一下<ArrowUpRight size={17} strokeWidth={1.6} aria-hidden="true" /></a>
+            <button className="button button-dark" onClick={onAdopt}><Download size={17} strokeWidth={1.8} aria-hidden="true" />{t('hero.cta')}</button>
+            <a className="button button-outline" href="#playground">{t('hero.ctaGhost')}<ArrowUpRight size={17} strokeWidth={1.6} aria-hidden="true" /></a>
           </div>
         </motion.div>
       </div>
-      <motion.button className="hero-pet-button" aria-label="和 ClawdPet 打个招呼" onClick={sayHello} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.1, delay: 0.15, ease: [0.22, 1, 0.36, 1] }} whileHover={{ scale: 1.035, transition: { duration: 0.25, delay: 0 } }} whileTap={{ scale: 0.96, transition: { duration: 0.1, delay: 0 } }}>
+      <motion.button className="hero-pet-button" aria-label={t('hero.petAria')} onClick={sayHello} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.1, delay: 0.15, ease: [0.22, 1, 0.36, 1] }} whileHover={{ scale: 1.035, transition: { duration: 0.25, delay: 0 } }} whileTap={{ scale: 0.96, transition: { duration: 0.1, delay: 0 } }}>
         <motion.div animate={reducedMotion ? { rotate: -7 } : { y: [0, -15, 0], rotate: [-7, -4, -7] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}><PetGraphic mood={mood} /></motion.div>
       </motion.button>
-      <p className="sr-only" aria-live="polite">{mood === 'wave' ? 'ClawdPet 向你挥了挥小手，很高兴认识你！' : ''}</p>
-      <a className="scroll-hint" href="#about" aria-label="向下了解 ClawdPet"><ArrowDown size={18} strokeWidth={1.4} aria-hidden="true" /></a>
+      <p className="sr-only" aria-live="polite">{mood === 'wave' ? t('hero.waved') : ''}</p>
+      <a className="scroll-hint" href="#about" aria-label={t('hero.scroll')}><ArrowDown size={18} strokeWidth={1.4} aria-hidden="true" /></a>
     </section>
   );
 }
@@ -150,15 +217,16 @@ function FeatureArt({ variant }: { variant: 'quiet' | 'play' | 'chat' }) {
 }
 
 function About() {
+  const { t } = useLang();
   const features = [
-    { variant: 'quiet' as const, title: '不挡事，也不打扰', description: '平时鼠标穿透，谁也点不到它；\n真挡到哪儿了，它自己会走开。' },
-    { variant: 'play' as const, title: '摸一下，拎起来', description: '单击是摸头，拖它四条腿会乱晃，\n甩出去还会弹一下。' },
-    { variant: 'chat' as const, title: '想聊的话，它也能开口', description: '双击开聊天窗，接口地址和模型自己填，\n官方或中转都行；不填就只是一只安静的螃蟹。' },
+    { variant: 'quiet' as const, title: t('feat.quiet.title'), description: t('feat.quiet.desc') },
+    { variant: 'play' as const, title: t('feat.play.title'), description: t('feat.play.desc') },
+    { variant: 'chat' as const, title: t('feat.chat.title'), description: t('feat.chat.desc') },
   ];
   return (
     <section className="about-section section-space" id="about" aria-labelledby="about-title">
       <div className="container">
-        <Reveal className="section-heading centered-heading"><p className="eyebrow">SMALL PET, BIG COMPANY</p><h2 id="about-title">小小一只，刚刚好的陪伴。</h2><p className="section-description">不用一直说话。只要你回头时，它刚好在。</p></Reveal>
+        <Reveal className="section-heading centered-heading"><p className="eyebrow">{t('about.eyebrow')}</p><h2 id="about-title">{t('about.title')}</h2><p className="section-description">{t('about.desc')}</p></Reveal>
         <div className="features-grid">
           {features.map((feature, index) => <Reveal className="feature" key={feature.variant} delay={index * 0.1}><FeatureArt variant={feature.variant} /><h3>{feature.title}</h3><p>{feature.description}</p></Reveal>)}
         </div>
@@ -187,15 +255,18 @@ function playChime() {
 }
 
 type Interaction = 'hello' | 'pat' | 'nap';
+// 气泡里那句存的是 key 不是成品文案 —— 这样切语言时正在显示的那句也跟着翻。
+type SayKey = 'say.hi' | 'say.hello' | 'say.pat' | 'say.nap' | 'say.reset' | 'play.drag';
 
 function Playground() {
+  const { t } = useLang();
   const reducedMotion = useReducedMotion();
   const desktopRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragJustEnded = useRef(false);
   const [mood, setMood] = useState<PetMood>('idle');
   const [activeAction, setActiveAction] = useState<Interaction | null>(null);
-  const [message, setMessage] = useState('嗨，终于见到你啦！');
+  const [said, setSaid] = useState<SayKey>('say.hi');
   const [soundOn, setSoundOn] = useState(false);
   const [resetVersion, setResetVersion] = useState(0);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -204,7 +275,7 @@ function Playground() {
     if (timer.current) clearTimeout(timer.current);
     setActiveAction(action);
     setMood(action === 'hello' ? 'wave' : action === 'nap' ? 'sleepy' : 'happy');
-    setMessage({ hello: '嗨！今天也一起好好生活吧。', pat: '被你摸摸，心情一下就变好了。', nap: '你忙你的，我在这儿打个盹。' }[action]);
+    setSaid(({ hello: 'say.hello', pat: 'say.pat', nap: 'say.nap' } as const)[action]);
     if (soundOn) playChime();
     timer.current = setTimeout(() => { setMood('idle'); setActiveAction(null); }, 3300);
   };
@@ -214,35 +285,35 @@ function Playground() {
     setResetVersion((version) => version + 1);
     setMood('idle');
     setActiveAction(null);
-    setMessage('回到小角落，继续陪着你。');
+    setSaid('say.reset');
   };
 
   const actions = [
-    { id: 'hello' as const, label: '打招呼', icon: Hand },
-    { id: 'pat' as const, label: '摸摸头', icon: Heart },
-    { id: 'nap' as const, label: '打个盹', icon: Moon },
+    { id: 'hello' as const, label: t('play.hello'), icon: Hand },
+    { id: 'pat' as const, label: t('play.pat'), icon: Heart },
+    { id: 'nap' as const, label: t('play.nap'), icon: Moon },
   ];
 
   return (
     <section className="playground-section section-space" id="playground" aria-labelledby="playground-title">
       <div className="container playground-grid">
         <Reveal className="playground-copy">
-          <p className="eyebrow">A HELLO GOES A LONG WAY</p>
-          <h2 id="playground-title">先别急着走，<br />它想认识你。</h2>
-          <p className="section-description">给它一点小小的关心，<br />它会还你一整天的好心情。<br /><span className="playground-scope">页面上这只是预览：桌面版还会自己散步、久坐打盹、爬到你的窗口上张望。</span></p>
-          <div className="interaction-buttons" aria-label="与 ClawdPet 互动">
+          <p className="eyebrow">{t('play.eyebrow')}</p>
+          <h2 id="playground-title">{t('play.title1')}<br />{t('play.title2')}</h2>
+          <p className="section-description">{t('play.desc1')}<br />{t('play.desc2')}<br /><span className="playground-scope">{t('play.scope')}</span></p>
+          <div className="interaction-buttons" aria-label={t('play.buttonsAria')}>
             {actions.map(({ id, label, icon: Icon }) => <button key={id} className={`interaction-button ${activeAction === id ? 'is-active' : ''}`} onClick={() => interact(id)} aria-pressed={activeAction === id}><Icon size={17} strokeWidth={1.6} aria-hidden="true" />{label}</button>)}
           </div>
-          <span className="playground-note"><MousePointer2 size={14} aria-hidden="true" />也可以直接点点它、拖动它。</span>
+          <span className="playground-note"><MousePointer2 size={14} aria-hidden="true" />{t('play.note')}</span>
         </Reveal>
         <Reveal className="desktop-wrap" delay={0.15}>
           <div className="desktop-window" ref={desktopRef}>
             <div className="desktop-toolbar">
               <div className="window-dots" aria-hidden="true"><i /><i /><i /></div>
-              <span className="desktop-app-name">ClawdPet Playground</span>
+              <span className="desktop-app-name">{t('play.appName')}</span>
               <div className="desktop-tools">
-                <button className="desktop-tool" onClick={() => { if (!soundOn) playChime(); setSoundOn(!soundOn); }} aria-label={soundOn ? '关闭互动声音' : '打开互动声音'} aria-pressed={soundOn} title={soundOn ? '关闭声音' : '打开声音'}>{soundOn ? <Volume2 size={15} strokeWidth={1.6} /> : <VolumeX size={15} strokeWidth={1.6} />}</button>
-                <button className="desktop-tool" onClick={resetPet} aria-label="让宠物回到原位" title="回到原位"><RotateCcw size={14} strokeWidth={1.6} /></button>
+                <button className="desktop-tool" onClick={() => { if (!soundOn) playChime(); setSoundOn(!soundOn); }} aria-label={soundOn ? t('play.soundOff') : t('play.soundOn')} aria-pressed={soundOn} title={soundOn ? t('play.soundTitleOn') : t('play.soundTitleOff')}>{soundOn ? <Volume2 size={15} strokeWidth={1.6} /> : <VolumeX size={15} strokeWidth={1.6} />}</button>
+                <button className="desktop-tool" onClick={resetPet} aria-label={t('play.reset')} title={t('play.resetTitle')}><RotateCcw size={14} strokeWidth={1.6} /></button>
               </div>
             </div>
             <div className="desktop-wallpaper" aria-hidden="true">
@@ -254,38 +325,38 @@ function Playground() {
               key={resetVersion} className="desktop-pet" drag dragConstraints={desktopRef}
               dragElastic={0.08} dragMomentum={false}
               onDragStart={() => { dragJustEnded.current = true; }}
-              onDragEnd={() => { setMessage('这里也不错，就在这儿陪你。'); window.setTimeout(() => { dragJustEnded.current = false; }, 100); }}
+              onDragEnd={() => { setSaid('play.drag'); window.setTimeout(() => { dragJustEnded.current = false; }, 100); }}
               onClick={() => { if (!dragJustEnded.current) interact('pat'); }}
-              whileTap={{ cursor: 'grabbing' }} aria-label="摸摸 ClawdPet，也可以拖动它"
+              whileTap={{ cursor: 'grabbing' }} aria-label={t('play.petAria')}
             >
               <span className="desktop-pet-shadow" aria-hidden="true" />
-              <AnimatePresence mode="wait"><motion.span className="pet-speech" key={message} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.22 }} aria-hidden="true">{message}</motion.span></AnimatePresence>
+              <AnimatePresence mode="wait"><motion.span className="pet-speech" key={said} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.22 }} aria-hidden="true">{t(said)}</motion.span></AnimatePresence>
               <motion.div animate={reducedMotion ? {} : mood === 'happy' ? { y: [0, -17, 0], rotate: [0, 5, -4, 0] } : { y: [0, -5, 0] }} transition={mood === 'happy' ? { duration: 0.6 } : { duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}><PetGraphic mood={mood} /></motion.div>
               <AnimatePresence>{mood === 'happy' && <motion.span className="pet-love" initial={{ opacity: 0, y: 4, scale: 0.6 }} animate={{ opacity: [0, 1, 0], y: -46, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.3 }} aria-hidden="true"><Heart size={24} strokeWidth={1.3} fill="currentColor" /></motion.span>}</AnimatePresence>
             </motion.button>
             <span className="desktop-demo-label">a little space for a little friend.</span>
           </div>
-          <p className="desktop-caption">一个小小的交互预览，一段可爱的陪伴。桌面版的它要住在你的 Windows 桌面上。</p>
-          <p className="sr-only" aria-live="polite" aria-atomic="true">{message}</p>
+          <p className="desktop-caption">{t('play.caption')}</p>
+          <p className="sr-only" aria-live="polite" aria-atomic="true">{t(said)}</p>
         </Reveal>
       </div>
     </section>
   );
 }
 
-const questions = [
-  { question: 'ClawdPet 是什么？', answer: 'ClawdPet 是把 clawd.js 那只蜡笔小螃蟹做成的 Windows 桌面宠物。没人管它的时候，它自己在屏幕上散步、撞到边缘就转身，坐久了会睡着冒 z；你切到别的窗口，它会爬到那个窗口边上探头张望。页面上这一只是网页预览，可以先点点玩。' },
-  { question: '可以在哪些设备上使用？', answer: '只支持 Windows。桌宠要读前台窗口的标题才知道该爬到哪个窗口上，用的是 Win32 接口，暂时没有其他系统的版本。不想先装东西的话，也可以下载那个无需联网的 HTML 体验文件，双击就能看。' },
-  { question: '它会读取我的文件或个人信息吗？', answer: '桌面版每秒读一次前台窗口的标题文本和位置，用途就是决定爬哪个窗口——不读文件内容，也不上传。锁屏和空闲时间由系统接口读。你填的 API Key 用 Windows 钥匙串加密后存在本地。这个网页和离线体验文件不联网、不读任何东西。' },
-  { question: '需要账号或者 API Key 吗？', answer: '不需要。v0.1.0 默认不开聊天，双击只会提示你去右键里打开。真想聊的话，在设置窗里填接口地址、Key 和模型名就行，官方或中转都可以，不绑定 Anthropic。不填的话，它就是一只只会散步的小螃蟹。' },
-];
-
 function FAQ() {
+  const { t } = useLang();
   const [openQuestion, setOpenQuestion] = useState<number | null>(null);
+  const questions = [
+    { question: t('faq.q1'), answer: t('faq.a1') },
+    { question: t('faq.q2'), answer: t('faq.a2') },
+    { question: t('faq.q3'), answer: t('faq.a3') },
+    { question: t('faq.q4'), answer: t('faq.a4') },
+  ];
   return (
     <section className="faq-section section-space" id="faq" aria-labelledby="faq-title">
       <div className="container faq-grid">
-        <Reveal className="faq-heading"><p className="eyebrow">A FEW LITTLE THINGS</p><h2 id="faq-title">一点点好奇，<br />一点点解答。</h2><p className="section-description">关于你的新朋友，<br />你可能还想知道这些。</p></Reveal>
+        <Reveal className="faq-heading"><p className="eyebrow">{t('faq.eyebrow')}</p><h2 id="faq-title">{t('faq.title1')}<br />{t('faq.title2')}</h2><p className="section-description">{t('faq.desc1')}<br />{t('faq.desc2')}</p></Reveal>
         <Reveal className="faq-list" delay={0.1}>
           {questions.map(({ question, answer }, index) => (
             <div className={`faq-item ${openQuestion === index ? 'is-open' : ''}`} key={question}>
@@ -300,33 +371,35 @@ function FAQ() {
 }
 
 function Closing({ onAdopt }: { onAdopt: () => void }) {
+  const { t } = useLang();
   return (
     <section className="closing-section" aria-labelledby="closing-title">
       <Sparkle className="closing-sparkle closing-sparkle-left" /><Sparkle className="closing-sparkle closing-sparkle-right" />
       <Reveal className="closing-content">
         <img className="closing-pet" src={petLogo} width="86" height="64" alt="" />
-        <p className="eyebrow">MAKE ROOM FOR A LITTLE JOY</p>
-        <h2 id="closing-title">给你的桌面，<br />留一个可爱的位置。</h2>
-        <button className="button button-orange" onClick={onAdopt}>把 ClawdPet 带回家<ArrowUpRight size={17} strokeWidth={1.7} aria-hidden="true" /></button>
+        <p className="eyebrow">{t('closing.eyebrow')}</p>
+        <h2 id="closing-title">{t('closing.title1')}<br />{t('closing.title2')}</h2>
+        <button className="button button-orange" onClick={onAdopt}>{t('closing.cta')}<ArrowUpRight size={17} strokeWidth={1.7} aria-hidden="true" /></button>
       </Reveal>
     </section>
   );
 }
 
 function Footer() {
+  const { t } = useLang();
   return (
     <footer className="site-footer">
       <div className="container">
-        <div className="footer-main"><Brand /><p className="footer-love">A small pet. A softer everyday.</p><nav className="footer-nav" aria-label="页脚导航"><a href="#about">关于</a><a href="#playground">体验</a><a href="#faq">常见问题</a><a href={repoUrl} target="_blank" rel="noreferrer">GitHub<ArrowUpRight size={12} aria-hidden="true" /></a></nav></div>
-        <div className="footer-bottom"><span>&copy; {new Date().getFullYear()} ClawdPet. 只支持 Windows，MIT 开源。</span><span>蜡笔小螃蟹出自 clawd.js，与 Anthropic 无官方关联。</span></div>
+        <div className="footer-main"><Brand /><p className="footer-love">A small pet. A softer everyday.</p><nav className="footer-nav" aria-label={t('footer.navAria')}><a href="#about">{t('footer.about')}</a><a href="#playground">{t('footer.play')}</a><a href="#faq">{t('footer.faq')}</a><a href={repoUrl} target="_blank" rel="noreferrer">GitHub<ArrowUpRight size={12} aria-hidden="true" /></a></nav></div>
+        <div className="footer-bottom"><span>&copy; {new Date().getFullYear()} ClawdPet. {t('footer.rights')}</span><span>{t('footer.credit')}</span></div>
       </div>
     </footer>
   );
 }
 
 function AdoptDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useLang();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [downloaded, setDownloaded] = useState(false);
 
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null;
@@ -354,32 +427,32 @@ function AdoptDialog({ onClose }: { onClose: () => void }) {
   return (
     <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <motion.div className="adopt-dialog" role="dialog" aria-modal="true" aria-labelledby="adopt-title" aria-describedby="adopt-description" tabIndex={-1} ref={dialogRef} initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.98 }} transition={{ duration: 0.25 }}>
-        <button className="dialog-close icon-button" onClick={onClose} aria-label="关闭领养窗口"><X size={20} strokeWidth={1.5} /></button>
+        <button className="dialog-close icon-button" onClick={onClose} aria-label={t('dialog.close')}><X size={20} strokeWidth={1.5} /></button>
         <img className="dialog-pet" src={petLogo} width="94" height="70" alt="" />
-        <p className="eyebrow">YOUR LITTLE FRIEND AWAITS</p>
-        <h2 id="adopt-title">领养你的 ClawdPet</h2>
-        <p className="dialog-description" id="adopt-description">Windows 桌面版 v0.1.0 已发布，先从一份小小的陪伴开始。</p>
+        <p className="eyebrow">{t('dialog.eyebrow')}</p>
+        <h2 id="adopt-title">{t('dialog.title')}</h2>
+        <p className="dialog-description" id="adopt-description">{t('dialog.desc')}</p>
         <div className="platform-information">
-          <h3>一个 exe，免安装。</h3>
-          <p>v0.1.0 · 68 MB，双击就跑，不写注册表，卸载就是删掉这个文件。<br />它用的是自签名证书，所以 Windows 会弹「Windows 已保护你的电脑」，点「更多信息 → 仍要运行」就行。</p>
+          <h3>{t('dialog.infoTitle')}</h3>
+          <p>{t('dialog.infoA')}<br />{t('dialog.infoB')}</p>
         </div>
-        <a className="button button-dark dialog-primary" href={exeUrl} onClick={onClose}><Download size={17} strokeWidth={1.7} aria-hidden="true" />下载 Windows 版（.exe）<ArrowRight size={17} strokeWidth={1.7} aria-hidden="true" /></a>
-        <button className="button button-outline dialog-download" onClick={() => { downloadOfflinePet(); setDownloaded(true); }}>{downloaded ? <Check size={17} strokeWidth={1.7} /> : <Download size={17} strokeWidth={1.7} />}{downloaded ? '再次下载离线体验' : '下载离线网页体验 (.html)'}</button>
-        <p className="download-note" aria-live="polite">{downloaded ? '体验文件已生成，双击 HTML 文件就能见到它。' : '暂时不想装东西？下面这个离线文件不需要安装、不联网，双击就能看。'}</p>
-        <button className="dialog-preview-link" onClick={startPreview}>还是先在网页里玩玩<ArrowRight size={14} strokeWidth={1.7} aria-hidden="true" /></button>
+        <a className="button button-dark dialog-primary" href={exeUrl} onClick={onClose}><Download size={17} strokeWidth={1.7} aria-hidden="true" />{t('dialog.download')}<ArrowRight size={17} strokeWidth={1.7} aria-hidden="true" /></a>
+        <p className="download-note">{t('dialog.note')}</p>
+        <button className="dialog-preview-link" onClick={startPreview}>{t('dialog.preview')}<ArrowRight size={14} strokeWidth={1.7} aria-hidden="true" /></button>
       </motion.div>
     </motion.div>
   );
 }
 
 export default function App() {
+  const { t } = useLang();
   const [adoptOpen, setAdoptOpen] = useState(false);
   const openAdopt = useCallback(() => setAdoptOpen(true), []);
   const closeAdopt = useCallback(() => setAdoptOpen(false), []);
   return (
     <MotionConfig reducedMotion="user">
       <div id="top" className="site-shell">
-        <a className="skip-link" href="#main-content">跳到主要内容</a>
+        <a className="skip-link" href="#main-content">{t('skip')}</a>
         <Header onAdopt={openAdopt} />
         <main id="main-content"><Hero onAdopt={openAdopt} /><About /><Playground /><FAQ /><Closing onAdopt={openAdopt} /></main>
         <Footer />

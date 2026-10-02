@@ -54,6 +54,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid #b57352; outline-offs
 .header-actions { display: flex; align-items: center; gap: 26px; }
 .github-link { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #615d53; transition: color 180ms ease; }
 .github-link:hover { color: var(--orange); }
+.lang-menu { position: relative; }
+.lang-trigger { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: #8a8176; transition: color 180ms ease, background 180ms ease; }
+.lang-trigger:hover, .lang-trigger[aria-expanded="true"] { color: var(--orange); background: #f1eae0; }
+.lang-options { position: absolute; top: calc(100% + 9px); right: 0; z-index: 60; min-width: 124px; margin: 0; padding: 5px; list-style: none; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: 0 14px 30px #2b251822; }
+.lang-options button { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; padding: 9px 11px; border: 0; border-radius: 5px; background: transparent; font-size: 12px; color: #6f6759; transition: background 160ms ease, color 160ms ease; }
+.lang-options button:hover { background: #f2ebe1; }
+.lang-options button.is-active { color: var(--orange); }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 11px; min-height: 49px; padding: 13px 23px; border: 1px solid transparent; border-radius: 7px; font-size: 14px; font-weight: 400; line-height: 1.5; white-space: nowrap; transition: background 200ms ease, border-color 200ms ease, color 200ms ease, transform 200ms ease; }
 .button:hover { transform: translateY(-2px); }
 .button-dark { background: #36372f; color: #fffdf6; }
@@ -208,8 +215,7 @@ h2 { font-family: var(--chinese-serif); font-weight: 400; font-size: 38px; line-
 .platform-information { min-height: 100px; text-align: left; margin: 25px 0 22px; }
 .platform-information h3 { font-size: 15px; font-weight: 500; margin: 0 0 9px; color: #6b5e4a; }
 .platform-information p { font-size: 12px; line-height: 1.95; color: #9a8c78; margin: 0; }
-.dialog-primary, .dialog-download { width: 100%; font-size: 13px; }
-.dialog-download { margin-top: 10px; min-height: 45px; }
+.dialog-primary { width: 100%; font-size: 13px; }
 .download-note { font-size: 10px; line-height: 1.7; color: #aa9b87; margin: 15px 0 0; }
 .dialog-preview-link { display: inline-flex; align-items: center; gap: 5px; margin-top: 14px; padding: 4px 2px; background: transparent; border: 0; font-size: 11px; color: #9d907c; transition: color 180ms ease; }
 .dialog-preview-link:hover { color: var(--orange); }
@@ -409,3 +415,17 @@ h2 { font-family: var(--chinese-serif); font-weight: 400; font-size: 38px; line-
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* 切到英文：标题换 Instrument Serif（中文衬线字体的拉丁字形偏中规中矩），
+   并降一档字号——英文句子比中文长一截，原尺寸会撞版。 */
+html[lang="en"] h2,
+html[lang="en"] .hero-tagline { font-family: var(--display-font); letter-spacing: -0.012em; }
+html[lang="en"] .hero-tagline { font-size: 33px; line-height: 1.45; }
+html[lang="en"] .about-section h2 { font-size: 30px; }
+html[lang="en"] .playground-copy h2 { font-size: 36px; }
+html[lang="en"] .faq-heading h2 { font-size: 31px; }
+html[lang="en"] .closing-content h2 { font-size: 35px; }
+html[lang="en"] .adopt-dialog h2 { font-size: 25px; }
+html[lang="en"] .accent-word::after { width: 96%; }
+html[lang="en"] .interaction-button { white-space: normal; }
+html[lang="en"] .playground-note { align-items: flex-start; }

@@ -15,8 +15,8 @@ npm run preview    # 预览构建产物
 
 ```
 src/App.tsx                 整站（Hero / 三个特性 / 可交互的桌面预览 / FAQ / 领养弹窗 / 页脚）
+src/i18n.ts                 中英文案表 + 一个小 store（useLang），切语言不用 props 往下传
 src/components/PetGraphic   小螃蟹 SVG，多个同页共存时给渐变 ID 加前缀（useId）
-src/lib/downloadPet.ts      在浏览器里拼出一份离线 HTML，点了直接下载
 src/assets/clawdpet.svg     角色本体，和桌面版同一只
 public/favicon.svg
 ```
@@ -33,6 +33,17 @@ const exeUrl = `${repoUrl}/releases/download/v0.1.0/ClawdPet-0.1.0.exe`;
 
 自签名会弹 SmartScreen 蓝框这件事，写在了下载按钮正下方——那是用户第一次遇到就会卡住的地方，不写等于骗人。
 
+## 中英文
+
+文案全在 `src/i18n.ts`：一份 `zh` 是基准，`en` 按 `typeof zh` 标注，**少翻一个 key 就编译不过**（跑 `npx tsc --noEmit` 一眼能看出来）。
+
+- 首次打开看浏览器语言（`navigator.languages[0]`，`zh-*` 当中文，其余当英文）；
+- 之后以用户在下拉里选的那个为准，存在 `localStorage`；
+- 切换时同步改 `<html lang>` 和 `document.title`；
+- `index.css` 末尾有一小段 `html[lang="en"]` 覆写——英文句子比中文长，标题字号要降一档，字体也换成 Instrument Serif。改了英文文案长度先去看那一段。
+
+语言按钮是导航里那个地球图标，弹一个两行的下拉（`role="listbox"`，当前语言打勾）。点外面或按 Esc 关掉。
+
 ## 改文案
 
-只有 `src/App.tsx` 和 `index.html` 里那几段。特性卡片的插画变体名跟着卡片走（`feature-art-quiet` / `-play` / `-chat`），改名字要连 `src/index.css` 一起改。
+特性卡片的插画变体名跟着卡片走（`feature-art-quiet` / `-play` / `-chat`），改名字要连 `src/index.css` 一起改。气泡里那句存的是 key（`SayKey`）不是成品文案，这样切语言时正在显示的那句也跟着翻。
