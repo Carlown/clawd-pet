@@ -15,7 +15,12 @@ build/*.pfx
 build/ca.srl
 build/signer.ext
 
+# 录屏工具默认的中文文件名（录完挑一条放进 docs/ 就够了）
+屏幕录制_*.gif
+
 # 自检/调试跑出来的快照（每次跑都会变）
+build/gif-contact.png
+build/user-gif-contact.png
 build/pet-snapshot.png
 build/sheet-snapshot.png
 build/chat-thinking.png

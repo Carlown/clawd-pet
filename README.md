@@ -2,6 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+![桌宠在桌面上自己走来走去](docs/demo.gif)
+
 把 [clawd.js](clawd.js) 那只蜡笔小螃蟹做成真正的桌面宠物：透明置顶浮在桌面上，会自己散步、被拖着会晃腿、丢下去会弹一下、久坐会睡着冒 z、鼠标靠近会醒。
 
 **clawd.js 一行未改。** 原文件是某个 canvas 工程拆出来的角色模块，它依赖的 20 多个全局函数（`PAL` / `MX` / `sh` / `ink` / `hand` / `beatInfo` …）原工程没跟过来，所以这个仓库做了两件事：
