@@ -157,6 +157,10 @@ const Pet = {
     if (w.locked && !prev.locked) return;                     // 刚锁屏，先不说话
     if (!w.locked && prev.locked) { this.welcomeBack(); return; }
     if (w.locked) return;
+    // 已经站在某个窗口的标题栏上了，而那个窗口没了（被最小化/关掉/切走）
+    // → 先把它放下来。必须放在下面那几道 early-return 前面：
+    // 最小化时前台窗口会变成别的（或者读不到），那些 return 会直接把消息吃掉。
+    if (this.dropIfPlatGone(w)) return;
     // 没锁屏，但你很久没碰鼠标又突然动了 —— 也当是回来打个招呼
     if (prev.idle > 180 && w.idle < 8) { this.welcomeBack(prev.idle); return; }
     if (!w.supported || w.minimized || !w.rect) return;
@@ -207,6 +211,20 @@ const Pet = {
     this.peekTitle = title || '';
     this.peekFace = this.p.x <= wallL ? 1 : -1;   // 从左边上来就朝右看
     this.chaseTo(this.wallX, 'wall');
+  },
+
+  // 探头期间那个窗口被最小化了 → 别挂在空气里，直接掉下来。
+  // 主进程每秒推一次样本：窗口一最小化，前台窗口就变成别的东西（或者干脆读不到），
+  // 所以只要「现在的前台窗口已经不是刚才那个」就当作它没了。
+  // 平台已经在（chase/climb/peek 都算），且样本说目标不见了 → 立刻掉下来。
+  dropIfPlatGone(w) {
+    if (!this.plat) return false;
+    const gone = !w || !w.supported || !!w.minimized || !w.rect
+      || (w.title || '') !== this.peekTitle;
+    if (!gone) return false;
+    // immediate = 打断：平台已经没了，原路返回也无处可返，直接自由落体
+    this.leavePeek(true);
+    return true;
   },
 
   // 探头结束。默认是「原路返回」：先沿标题栏走回那面墙，再顺着爬下去。
@@ -674,8 +692,13 @@ const Pet = {
     if (!ctx) return;
     ctx.clearRect(0, 0, this.W, this.H);        // 透明窗口：不清会叠出一串残影
     const f = this.face();
+    // 腿部动画要跟着「在动」的状态走。以前只有 walk 才给相位，
+    // 于是 chase（赶去窗口那边）和 climb（爬墙）里 p.walk 明明在推进，
+    // 画的时候却被当成 null 丢掉 —— 表现就是它一路滑过去、贴着墙往上飘，腿是直的。
+    // peek 不算：那时候它已经站在标题栏上不动了，腿就该站直。
+    const stepping = this.state === 'walk' || this.state === 'chase' || this.state === 'climb';
     const o = {
-      walk: this.state === 'walk' ? this.p.walk : null,
+      walk: stepping ? this.p.walk : null,
       squash: this.p.squash,
       lift: this.p.lift,
       rot: this.p.rot,

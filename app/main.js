@@ -174,13 +174,34 @@ function moveWindowTo(x, y) {
   return { x: n.x, y: n.y };
 }
 
+// 开机自启要指向「用户双击的那个 exe」，而不是 process.execPath。
+// 这个包是 electron-builder 的 portable 目标：启动时它会把自己解包到临时目录再从里面跑，
+// 所以 process.execPath 指的是 %TEMP% 下一个用完就会被删掉的路径 ——
+// 注册它开机必然启动不了（而且用户看到的是「勾了没用」）。
+// portable.nsi 会把真身路径写进 PORTABLE_EXECUTABLE_FILE，这里优先用它。
+function loginItemPath() {
+  const real = process.env.PORTABLE_EXECUTABLE_FILE;
+  return (real && fs.existsSync(real)) ? real : app.getPath('exe');
+}
+
+function applyAutoLaunch() {
+  const want = !!readSettings().autoLaunch;
+  const path = loginItemPath();
+  try {
+    // openAsHidden 让开机启动时直接进托盘，不弹一个窗出来
+    app.setLoginItemSettings({ openAtLogin: want, openAsHidden: true, path, args: ['--hidden'] });
+  } catch (e) {
+    console.warn('[开机自启] 设置失败：', e && e.message);
+    return false;
+  }
+  return true;
+}
+
 function applyWindowPrefs() {
   if (!win) return;
   const s = readSettings();
   win.setAlwaysOnTop(!!s.alwaysOnTop, 'screen-saver');
-  if (s.autoLaunch !== undefined) {
-    try { app.setLoginItemSettings({ openAtLogin: !!s.autoLaunch, args: ['--hidden'] }); } catch (e) { /* 某些环境不支持 */ }
-  }
+  applyAutoLaunch();
   if (!s.clickThrough) setClickThrough(false);
   if (win && !win.isDestroyed()) win.webContents.send('win:info', windowInfo());
 }
@@ -383,6 +404,47 @@ function sseLines(body, onEvent) {
   })();
 }
 
+// <think>…</think> 过滤器（流式安全）。
+// 有些网关（sharellm 之类）不把思考放进 reasoning_content，而是直接用 <think> 标签
+// 混在 delta.content 里一句一句吐出来 —— 用户就在气泡里看见模型的自言自语了。
+// 难点在于标签本身会被切断：'…>你叫' + '<thi' + 'nk>我出来…'，
+// 所以每段先拼到缓冲里，确认不是半个标签才吐出去。
+const THINK_OPEN = /<think(?:ing)?>/i;
+const THINK_CLOSE = /<\/think(?:ing)?>/i;
+const TAG_KEEP = 16;                 // 尾部留这么多字，用来判断「标签还没吐完」
+function makeThinkFilter() {
+  let buf = '', inThink = false;
+  return {
+    push(s) {
+      buf += String(s == null ? '' : s);
+      let out = '';
+      for (;;) {
+        if (inThink) {
+          const m = buf.match(THINK_CLOSE);
+          if (!m) {                                   // 整段都是思考，丢掉，只留尾巴
+            if (buf.length > TAG_KEEP) buf = buf.slice(-TAG_KEEP);
+            return out;
+          }
+          buf = buf.slice(m.index + m[0].length);
+          inThink = false;
+          continue;
+        }
+        const m = buf.match(THINK_OPEN);
+        if (m) { out += buf.slice(0, m.index); buf = buf.slice(m.index + m[0].length); inThink = true; continue; }
+        const lt = buf.lastIndexOf('<');              // 结尾可能是半个 '<'，扣住等下一段
+        if (lt >= 0 && buf.length - lt < TAG_KEEP) { out += buf.slice(0, lt); buf = buf.slice(lt); }
+        else { out += buf; buf = ''; }
+        return out;
+      }
+    },
+    flush() {                                          // 流收尾：思考没闭合就丢掉，闭合了就吐剩下的
+      const rest = inThink ? '' : buf;
+      buf = ''; inThink = false;
+      return rest;
+    },
+  };
+}
+
 async function callAnthropic(s, text, signal, delta) {
   const res = await fetch(joinUrl(s.apiBase, '/v1/messages'), {
     method: 'POST',
@@ -406,9 +468,24 @@ async function callAnthropic(s, text, signal, delta) {
     err.status = res.status;
     throw err;
   }
+  // extended thinking：thinking 块整块丢掉（delta.text 里也可能有 <think> 标签，再过一道）
+  const tf = makeThinkFilter();
+  let inThinking = false;
   await sseLines(res.body, (e) => {
-    if (e.type === 'content_block_delta' && e.delta && e.delta.text) delta(e.delta.text);
+    if (e.type === 'content_block_start') {
+      const t = e.content_block && e.content_block.type;
+      inThinking = (t === 'thinking' || t === 'redacted_thinking');
+      return;
+    }
+    if (e.type === 'content_block_stop') { inThinking = false; return; }
+    if (e.type !== 'content_block_delta' || !e.delta) return;
+    if (inThinking || e.delta.type === 'thinking_delta' || e.delta.type === 'signature_delta') return;
+    if (!e.delta.text) return;
+    const out = tf.push(e.delta.text);
+    if (out) delta(out);
   });
+  const tail = tf.flush();
+  if (tail) delta(tail);
 }
 
 async function callOpenAI(s, text, signal, delta) {
@@ -431,10 +508,20 @@ async function callOpenAI(s, text, signal, delta) {
     err.status = res.status;
     throw err;
   }
+  // 思考字段（reasoning_content / reasoning）本来就是分开的，不碰；
+  // 但有些网关会把 <think> 标签混在 content 里，所以还要过一道过滤器。
+  const tf = makeThinkFilter();
   await sseLines(res.body, (e) => {
-    const c = e.choices && e.choices[0] && e.choices[0].delta && e.choices[0].delta.content;
-    if (c) delta(c);
+    const d = e.choices && e.choices[0] && e.choices[0].delta;
+    if (!d) return;
+    let c = d.content;
+    if (Array.isArray(c)) c = c.map((b) => (b && (b.text || b.content)) || '').join('');   // 少数网关给数组
+    if (!c) return;
+    const out = tf.push(c);
+    if (out) delta(out);
   });
+  const tail = tf.flush();
+  if (tail) delta(tail);
 }
 
 // auto：先按 Anthropic 格式打，打不通（网络错 / 端点不存在）再退回 OpenAI 格式
@@ -864,6 +951,52 @@ app.whenReady().then(() => {
         Q.textFits = { widestLine: Math.round(widest8), boxW: Math.round(bb8.w || 0), boxH: Math.round(bb8.h || 0), over: Math.round(widest8 - (bb8.w || 0)) };
         Q.textFitsOk = widest8 <= (bb8.w || 0) + 0.5;
         Pet.clearBubble(); Pet.bubbleBox = null;
+        // ---- B9 探头期间窗口被最小化 → 必须掉下来（不能悬在空中）----
+        // 复现用户说的那个场景：它正好站在弹窗标题栏上，用户把那个弹窗最小化了。
+        // 之前 onWatch 里 minimized 直接 return，plat 留着，桌宠就永远挂在半空。
+        Pet.plat = null; Pet.lastGround = null; Pet.enter('idle'); Pet.p.y = Pet.floorY(); Pet.snapCam();
+        for (let i = 0; i < 120 && Pet.state !== 'idle'; i++) Pet.update(1 / 60);
+        Pet.tryPeek({ x: 200, y: Math.round(Pet.floorY()) - 300, w: 420, h: 400 }, '会被最小化的窗口');
+        // 推到它已经站上标题栏（peek）为止
+        for (let i = 0; i < 3000 && Pet.state !== 'peek'; i++) Pet.update(1 / 60);
+        const minBefore = { state: Pet.state, onPlat: !!Pet.plat, y: Math.round(Pet.p.y) };
+        // 现在那个窗口被最小化了：前台变成别的东西，标题也不一样了
+        Pet.onWatch({ title: '别的窗口', rect: { x: 900, y: 400, w: 500, h: 300 }, minimized: false, locked: false, idle: 3, supported: true });
+        const minAfterEvent = { state: Pet.state, plat: !!Pet.plat };
+        // 跑完整个下落过程
+        let landed = false;
+        for (let i = 0; i < 600; i++) { Pet.update(1 / 60); if (!Pet.plat && Pet.state === 'idle') { landed = true; break; } }
+        const minAfter = { state: Pet.state, plat: !!Pet.plat, y: Math.round(Pet.p.y), floor: Math.round(Pet.floorY()) };
+        Q.minimizeDrops = {
+          before: minBefore, afterEvent: minAfterEvent, after: minAfter,
+          wasOnPlat: minBefore.onPlat,
+          droppedImmediately: !minAfterEvent.plat && minAfterEvent.state !== 'peek',
+          reachedFloor: landed && Math.abs(minAfter.y - minAfter.floor) < 2,
+        };
+        Q.minimizeDropsOk = minBefore.onPlat && Q.minimizeDrops.droppedImmediately && Q.minimizeDrops.reachedFloor;
+
+        // ---- B10 走路/赶路/爬墙时腿必须在动 ----
+        // 以前 draw() 只在 state==='walk' 时把 p.walk 传给 clawd，
+        // chase 和 climb 里相位明明在推进却画成静止的腿（直着滑过去）。
+        const legPhase = (st) => {
+          const keep = Pet.state, keepPlat = Pet.plat, keepWalk = Pet.p.walk;
+          Pet.state = st; Pet.plat = keepPlat;
+          Pet.draw();
+          // clawd 收到的 o.walk 就是相位；直接复算一遍判定条件
+          const stepping = st === 'walk' || st === 'chase' || st === 'climb';
+          Pet.state = keep; Pet.plat = keepPlat; Pet.p.walk = keepWalk;
+          return stepping;
+        };
+        Q.legs = { walk: legPhase('walk'), chase: legPhase('chase'), climb: legPhase('climb'), peek: legPhase('peek') };
+        Q.legsOk = Q.legs.walk && Q.legs.chase && Q.legs.climb && !Q.legs.peek;
+        // 相位本身要真的在推进（不然给了也是死的）
+        Pet.plat = null; Pet.enter('idle'); Pet.p.y = Pet.floorY();
+        Pet.chaseTo(Pet.p.x + 400, 'wall');
+        const w0 = Pet.p.walk;
+        for (let i = 0; i < 30; i++) Pet.update(1 / 60);
+        Q.legs.chasePhaseMoved = Math.abs(Pet.p.walk - w0) > 0.1;
+        Pet.enter('idle'); Pet.hopTarget = 0;
+
         // B5 切语言后人设要真的跟着换（主进程那一侧），而且改过的人设不能被冲掉
         const p0 = (await window.petHost.getSettings()).systemPrompt;
         await window.petHost.saveSettings({ lang: 'en' });
@@ -882,7 +1015,8 @@ app.whenReady().then(() => {
         Settings.data = S0; Pet.applySettings(); I18N.setLang(L.cur);
         Q.ok = Q.sameList && Q.allSane && Q.petS0 > 0 && Q.petHit0 && Q.wrapWordSafe && Q.wrapCnOk
           && Q.bubbleInside && Q.linesCapped && Q.bubbleNormal && Q.textFitsOk
-          && Q.promptFollowsLang && Q.promptKeptCustom && Q.hmmOk;
+          && Q.promptFollowsLang && Q.promptKeptCustom && Q.hmmOk
+          && Q.minimizeDropsOk && Q.legsOk && Q.legs.chasePhaseMoved;
         out.sanity = Q;
         out.chatNoKey = await window.petHost.chatSend('hi');
         out.chatNoModel = (await window.petHost.testApi('hi')).error;
