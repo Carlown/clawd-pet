@@ -50,7 +50,12 @@ function clawd(x, y, s, o = {}) {
 
   // face
   const eyeY = bodyTop + bodyH * .40;
+  // look 是「屏幕方向」的量：lk[0] > 0 表示鼠标在它右边。
+  // 但身体可能被镜像（flip 时基矩阵的 x 取反），而 exo/eyo 是身体局部坐标 ——
+  // 不抵消的话，它朝左走的时候眼睛会往反方向看（鼠标明明在右边，它却盯着左边）。
+  // 这里先把横向分量扳回屏幕方向，后面所有五官（眼、嘴、眼泪、腮红）都跟着对。
   const lk = o.look || [0, 0];
+  const lo = o.flip ? -lk[0] : lk[0];
   const ex = .3, eyeW = .072, eyeH = .19;
   const face = o.eyes || 'open';
   let blink = 1;
@@ -59,7 +64,7 @@ function clawd(x, y, s, o = {}) {
     const k = Math.floor((t + off) / per); const at = k * per + hr(k, sd) * (per - .3) - off;
     const d = t - at; if (d > 0 && d < .16) blink = Math.abs(d - .08) / .08 * .92 + .08;
   }
-  const exo = lk[0] * .05, eyo = lk[1] * .04;
+  const exo = lo * .05, eyo = lk[1] * .04;
   const P = (px, py) => MX.pt(M, px, py);
   const SL = s; // local->px scale for radii
   for (const side of [-1, 1]) {

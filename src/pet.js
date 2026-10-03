@@ -202,6 +202,10 @@ const Pet = {
     const px0 = clamp(rect.x - m, d.x, Math.max(d.x, d.x + d.w - m * 2));
     const px1 = clamp(rect.x + rect.w + m, Math.min(d.x + d.w, d.x + m * 2), d.x + d.w);
     this.plat = { x: px0, w: Math.max(m * 2, px1 - px0), y: top };
+    // 记下这个平台是从哪个矩形推出来的（原始 rect，没被上面那些 clamp 改过）。
+    // 窗口被拖动时 rect 会变，而 plat 是一组固定坐标 —— 不比对的话，
+    // 窗口滑走了桌宠还站在原地，看上去就是悬在半空。
+    this.platRect = { x: rect.x, y: rect.y, w: rect.w };
     // 两面“墙”就是平台的两端 —— 走过去一定到得了，不会差着半截身子够不着
     const wallL = this.plat.x + m, wallR = this.plat.x + this.plat.w - m;
     this.wallX = Math.abs(this.p.x - wallL) <= Math.abs(this.p.x - wallR) ? wallL : wallR;
@@ -213,18 +217,23 @@ const Pet = {
     this.chaseTo(this.wallX, 'wall');
   },
 
-  // 探头期间那个窗口被最小化了 → 别挂在空气里，直接掉下来。
+  // 探头期间那个窗口没了（被最小化/关掉/切走）或者被拖走了
+  // → 别挂在空气里，直接掉下来。
   // 主进程每秒推一次样本：窗口一最小化，前台窗口就变成别的东西（或者干脆读不到），
-  // 所以只要「现在的前台窗口已经不是刚才那个」就当作它没了。
-  // 平台已经在（chase/climb/peek 都算），且样本说目标不见了 → 立刻掉下来。
+  // 所以只要「现在的前台窗口已经不是刚才那个」就当作它没了；
+  // 拖动则是同一个窗口、但 rect 变了 —— plat 是固定坐标，窗口一滑它就悬空了。
   dropIfPlatGone(w) {
     if (!this.plat) return false;
-    const gone = !w || !w.supported || !!w.minimized || !w.rect
-      || (w.title || '') !== this.peekTitle;
-    if (!gone) return false;
-    // immediate = 打断：平台已经没了，原路返回也无处可返，直接自由落体
-    this.leavePeek(true);
-    return true;
+    if (!w || !w.supported || !!w.minimized || !w.rect) { this.leavePeek(true); return true; }
+    if ((w.title || '') !== this.peekTitle) { this.leavePeek(true); return true; }
+    // 拖动检测：容差 6px，躲开 rect 读取本身的抖动，但真拖一下就够抓到了
+    const src = this.platRect;
+    if (src) {
+      const moved = Math.abs(w.rect.x - src.x) > 6 || Math.abs(w.rect.y - src.y) > 6
+        || Math.abs(w.rect.w - src.w) > 6;
+      if (moved) { this.leavePeek(true); return true; }
+    }
+    return false;
   },
 
   // 探头结束。默认是「原路返回」：先沿标题栏走回那面墙，再顺着爬下去。

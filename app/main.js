@@ -997,6 +997,54 @@ app.whenReady().then(() => {
         Q.legs.chasePhaseMoved = Math.abs(Pet.p.walk - w0) > 0.1;
         Pet.enter('idle'); Pet.hopTarget = 0;
 
+// ---- B11 探头期间窗口被「拖动」→ 也要掉下来 ----
+        // 最小化那条已经验过；拖动是同一个窗口、标题没变，只有 rect 变了。
+        // plat 是一组固定坐标，窗口一滑它就悬空了，所以要比对 platRect。
+        Pet.plat = null; Pet.platRect = null; Pet.lastGround = null; Pet.enter('idle'); Pet.p.y = Pet.floorY(); Pet.snapCam();
+        for (let i = 0; i < 120 && Pet.state !== 'idle'; i++) Pet.update(1 / 60);
+        const mvRect = { x: 300, y: Math.round(Pet.floorY()) - 320, w: 500, h: 400 };
+        Pet.tryPeek(mvRect, '会被拖动的窗口');
+        for (let i = 0; i < 3000 && Pet.state !== 'peek'; i++) Pet.update(1 / 60);
+        const mvBefore = { state: Pet.state, onPlat: !!Pet.plat };
+        // 同一个窗口，标题不变，只是被拖到了别处
+        Pet.onWatch({ title: '会被拖动的窗口', rect: { x: mvRect.x + 260, y: mvRect.y + 140, w: mvRect.w, h: mvRect.h },
+                      minimized: false, locked: false, idle: 3, supported: true });
+        const mvAfter = { state: Pet.state, plat: !!Pet.plat };
+        // 抖一下（1px，不算拖动）不该把它抖下来
+        Pet.plat = null; Pet.platRect = null; Pet.enter('idle'); Pet.p.y = Pet.floorY();
+        Pet.tryPeek(mvRect, '会被拖动的窗口');
+        for (let i = 0; i < 3000 && Pet.state !== 'peek'; i++) Pet.update(1 / 60);
+        Pet.onWatch({ title: '会被拖动的窗口', rect: { x: mvRect.x + 1, y: mvRect.y, w: mvRect.w, h: mvRect.h },
+                      minimized: false, locked: false, idle: 3, supported: true });
+        const mvJitter = { state: Pet.state, plat: !!Pet.plat };
+        Q.moveDrops = { before: mvBefore, after: mvAfter, jitter: mvJitter };
+        Q.moveDropsOk = mvBefore.onPlat && !mvAfter.plat && mvAfter.state !== 'peek'
+          && !!mvJitter.plat && mvJitter.state === 'peek';   // 1px 抖动要留着，6px 以上才掉
+        for (let i = 0; i < 600; i++) { Pet.update(1 / 60); if (!Pet.plat) break; }
+
+        // ---- B12 眼睛不能因为身体镜像而看向反方向 ----
+        // clawd 的基矩阵在 flip 时把 x 取反，而 exo 来自屏幕方向的 look[0]。
+        // 不抵消的话：鼠标在右边、它朝左走时，眼睛会往左看（正好反了）。
+        // 量法：同样 look=[1,0]（鼠标在右），分别 flip=false / flip=true 画一次，
+        // 扫出眼睛那块的墨色像素重心，两个方向都必须在 look 变大时往右移。
+        const stage2 = document.getElementById('stage');
+        const eyeCx = (flip, lx) => {
+          const c = stage2.getContext('2d', { willReadFrequently: true });
+          c.clearRect(0, 0, stage2.width, stage2.height);
+          clawd(220, 300, 150, { flip, look: [lx, 0], eyes: 'open', mouth: 'smile', hat: '', blink: false });
+          const y0 = 300 - Math.round(150 * 0.72), hh = Math.round(150 * 0.16);
+          const d = c.getImageData(140, y0, 160, hh).data;
+          let sx = 0, n = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            if (d[i + 3] > 60 && d[i] < 90 && d[i + 1] < 90 && d[i + 2] < 90) { sx += ((i / 4) % 160); n++; }
+          }
+          return n ? sx / n : -1;
+        };
+        const eR = { r: eyeCx(false, 1) - eyeCx(false, 0), l: eyeCx(true, 1) - eyeCx(true, 0) };
+        Q.eyes = { rightWhenUnflipped: +eR.r.toFixed(2), rightWhenFlipped: +eR.l.toFixed(2) };
+        // 两个都必须是正的：look 指向右 → 眼睛重心也往右移，跟身体朝向无关
+        Q.eyesOk = eR.r > 0.5 && eR.l > 0.5;
+        stage2.getContext('2d').clearRect(0, 0, stage2.width, stage2.height);
         // B5 切语言后人设要真的跟着换（主进程那一侧），而且改过的人设不能被冲掉
         const p0 = (await window.petHost.getSettings()).systemPrompt;
         await window.petHost.saveSettings({ lang: 'en' });
@@ -1016,7 +1064,8 @@ app.whenReady().then(() => {
         Q.ok = Q.sameList && Q.allSane && Q.petS0 > 0 && Q.petHit0 && Q.wrapWordSafe && Q.wrapCnOk
           && Q.bubbleInside && Q.linesCapped && Q.bubbleNormal && Q.textFitsOk
           && Q.promptFollowsLang && Q.promptKeptCustom && Q.hmmOk
-          && Q.minimizeDropsOk && Q.legsOk && Q.legs.chasePhaseMoved;
+          && Q.minimizeDropsOk && Q.legsOk && Q.legs.chasePhaseMoved
+          && Q.moveDropsOk && Q.eyesOk;
         out.sanity = Q;
         out.chatNoKey = await window.petHost.chatSend('hi');
         out.chatNoModel = (await window.petHost.testApi('hi')).error;
