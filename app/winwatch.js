@@ -82,10 +82,11 @@ function foreground(ownHwnd) {
     if (!h) return null;
     if (ownHwnd && ownHwnd.has(String(h))) return null;
     // 已经卡住的窗口直接跳过：既省时间，也避开"刚好在检查之后卡住"那道窄缝
-    if (k.hung(h)) return { title: '', rect: null, minimized: true, visible: true, hung: true };
+    if (k.hung(h)) return { title: '', rect: null, minimized: true, visible: true, hung: true, hwnd: String(h) };
     const title = titleOf(k, h);
     return {
       title,
+      hwnd: String(h),
       rect: rectOf(k, h),
       minimized: !!k.iconic(h),
       visible: !!k.visible(h),
@@ -98,7 +99,7 @@ function foreground(ownHwnd) {
 
 /**
  * 每秒采一次样推给渲染进程。start(app 起来之后调用)。
- * onSample({ title, rect, idle, locked, supported })
+ * onSample({ title, hwnd, rect, idle, locked, supported })
  *   idle    —— 距离上次键鼠输入的秒数
  *   locked  —— 锁屏 / 解锁的那一刻会立刻推一次（不用等下一个 tick）
  */
@@ -110,16 +111,17 @@ function start(onSample, ownHwnd) {
   let gap = 1000;
   // 读不到（卡住 / 无响应）的时候沿用上一次的结果，免得标题一会儿有一会儿没，
   // 让渲染进程以为你一直在切窗口
-  let lastTitle = '', lastRect = null;
+  let lastTitle = '', lastRect = null, lastHwnd = '';
   const push = (force) => {
     let idle = 0;
     try { idle = powerMonitor.getSystemIdleTime(); } catch (e) { idle = 0; }
     const t0 = Date.now();
     const fg = foreground(ownHwnd);
     const cost = Date.now() - t0;
-    if (fg && !fg.hung) { lastTitle = fg.title; lastRect = fg.rect; }
+    if (fg && !fg.hung) { lastTitle = fg.title; lastRect = fg.rect; lastHwnd = fg.hwnd || ''; }
     onSample({
       title: lastTitle,
+      hwnd: lastHwnd,
       rect: lastRect,
       minimized: !fg || fg.hung ? true : fg.minimized,   // 卡住/没窗口就当它不在前台，别去爬
       locked,

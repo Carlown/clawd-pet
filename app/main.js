@@ -956,12 +956,12 @@ app.whenReady().then(() => {
         // 之前 onWatch 里 minimized 直接 return，plat 留着，桌宠就永远挂在半空。
         Pet.plat = null; Pet.lastGround = null; Pet.enter('idle'); Pet.p.y = Pet.floorY(); Pet.snapCam();
         for (let i = 0; i < 120 && Pet.state !== 'idle'; i++) Pet.update(1 / 60);
-        Pet.tryPeek({ x: 200, y: Math.round(Pet.floorY()) - 300, w: 420, h: 400 }, '会被最小化的窗口');
+        Pet.tryPeek({ x: 200, y: Math.round(Pet.floorY()) - 300, w: 420, h: 400 }, '会被最小化的窗口', 'HWND_MIN');
         // 推到它已经站上标题栏（peek）为止
         for (let i = 0; i < 3000 && Pet.state !== 'peek'; i++) Pet.update(1 / 60);
         const minBefore = { state: Pet.state, onPlat: !!Pet.plat, y: Math.round(Pet.p.y) };
-        // 现在那个窗口被最小化了：前台变成别的东西，标题也不一样了
-        Pet.onWatch({ title: '别的窗口', rect: { x: 900, y: 400, w: 500, h: 300 }, minimized: false, locked: false, idle: 3, supported: true });
+        // 现在那个窗口被最小化了：前台变成别的东西，句柄也换了
+        Pet.onWatch({ title: '别的窗口', hwnd: 'HWND_OTHER', rect: { x: 900, y: 400, w: 500, h: 300 }, minimized: false, locked: false, idle: 3, supported: true });
         const minAfterEvent = { state: Pet.state, plat: !!Pet.plat };
         // 跑完整个下落过程
         let landed = false;
@@ -1003,23 +1003,47 @@ app.whenReady().then(() => {
         Pet.plat = null; Pet.platRect = null; Pet.lastGround = null; Pet.enter('idle'); Pet.p.y = Pet.floorY(); Pet.snapCam();
         for (let i = 0; i < 120 && Pet.state !== 'idle'; i++) Pet.update(1 / 60);
         const mvRect = { x: 300, y: Math.round(Pet.floorY()) - 320, w: 500, h: 400 };
-        Pet.tryPeek(mvRect, '会被拖动的窗口');
+        Pet.tryPeek(mvRect, '会被拖动的窗口', 'HWND_MOVE');
         for (let i = 0; i < 3000 && Pet.state !== 'peek'; i++) Pet.update(1 / 60);
         const mvBefore = { state: Pet.state, onPlat: !!Pet.plat };
         // 同一个窗口，标题不变，只是被拖到了别处
-        Pet.onWatch({ title: '会被拖动的窗口', rect: { x: mvRect.x + 260, y: mvRect.y + 140, w: mvRect.w, h: mvRect.h },
+        Pet.onWatch({ title: '会被拖动的窗口', hwnd: 'HWND_MOVE', rect: { x: mvRect.x + 260, y: mvRect.y + 140, w: mvRect.w, h: mvRect.h },
                       minimized: false, locked: false, idle: 3, supported: true });
         const mvAfter = { state: Pet.state, plat: !!Pet.plat };
         // 抖一下（1px，不算拖动）不该把它抖下来
         Pet.plat = null; Pet.platRect = null; Pet.enter('idle'); Pet.p.y = Pet.floorY();
-        Pet.tryPeek(mvRect, '会被拖动的窗口');
+        Pet.tryPeek(mvRect, '会被拖动的窗口', 'HWND_MOVE');
         for (let i = 0; i < 3000 && Pet.state !== 'peek'; i++) Pet.update(1 / 60);
-        Pet.onWatch({ title: '会被拖动的窗口', rect: { x: mvRect.x + 1, y: mvRect.y, w: mvRect.w, h: mvRect.h },
+        Pet.onWatch({ title: '会被拖动的窗口', hwnd: 'HWND_MOVE', rect: { x: mvRect.x + 1, y: mvRect.y, w: mvRect.w, h: mvRect.h },
                       minimized: false, locked: false, idle: 3, supported: true });
         const mvJitter = { state: Pet.state, plat: !!Pet.plat };
         Q.moveDrops = { before: mvBefore, after: mvAfter, jitter: mvJitter };
         Q.moveDropsOk = mvBefore.onPlat && !mvAfter.plat && mvAfter.state !== 'peek'
           && !!mvJitter.plat && mvJitter.state === 'peek';   // 1px 抖动要留着，6px 以上才掉
+        for (let i = 0; i < 600; i++) { Pet.update(1 / 60); if (!Pet.plat) break; }
+
+        // ---- B13 窗口只刷新了标题（进文件夹 / 换标签页）→ 不能掉 ----
+        // 用户反馈：没动窗口，只是进去一个文件夹，它就自己掉下去了。
+        // 以前 dropIfPlatGone 拿 title 当窗口身份，标题一变就误判成“窗口没了”。
+        // 现在身份只看 hwnd：句柄一样、rect 一样，就老老实实站着。
+        Pet.plat = null; Pet.platRect = null; Pet.peekHwnd = ''; Pet.lastGround = null;
+        Pet.enter('idle'); Pet.p.y = Pet.floorY(); Pet.snapCam();
+        for (let i = 0; i < 120 && Pet.state !== 'idle'; i++) Pet.update(1 / 60);
+        const ttRect = { x: 180, y: Math.round(Pet.floorY()) - 300, w: 460, h: 380 };
+        Pet.tryPeek(ttRect, '下载', 'HWND_TITLE');
+        for (let i = 0; i < 3000 && Pet.state !== 'peek'; i++) Pet.update(1 / 60);
+        const ttBefore = { state: Pet.state, onPlat: !!Pet.plat, y: Math.round(Pet.p.y) };
+        // 资源管理器里点进了子文件夹：标题变成完整路径，窗口一动没动
+        Pet.onWatch({ title: String.fromCharCode(67) + ':' + String.fromCharCode(92) + 'Users' + String.fromCharCode(92) + 'me' + String.fromCharCode(92) + 'Downloads' + String.fromCharCode(92) + '猫图',
+                      hwnd: 'HWND_TITLE', rect: ttRect, minimized: false, locked: false, idle: 3, supported: true });
+        const ttAfter = { state: Pet.state, plat: !!Pet.plat, y: Math.round(Pet.p.y) };
+        // 对照组：切到了另一个窗口，位置/大小恰好一模一样（hwnd 换了，标题也换了）。
+        // 这时候必须掉——否则就成了“认不出换窗口”的漏网之鱼，证明 B13 不是靠瞎活着过的。
+        Pet.onWatch({ title: '另一个窗口', hwnd: 'HWND_SWAPPED', rect: ttRect, minimized: false, locked: false, idle: 3, supported: true });
+        const ttSwap = { state: Pet.state, plat: !!Pet.plat };
+        Q.titleChangeOk = { before: ttBefore, after: ttAfter, swapped: ttSwap };
+        Q.titleChangeOkOk = ttBefore.onPlat && !!ttAfter.plat && ttAfter.state === 'peek'
+          && !ttSwap.plat && ttSwap.state !== 'peek';
         for (let i = 0; i < 600; i++) { Pet.update(1 / 60); if (!Pet.plat) break; }
 
         // ---- B12 眼睛不能因为身体镜像而看向反方向 ----
@@ -1065,7 +1089,7 @@ app.whenReady().then(() => {
           && Q.bubbleInside && Q.linesCapped && Q.bubbleNormal && Q.textFitsOk
           && Q.promptFollowsLang && Q.promptKeptCustom && Q.hmmOk
           && Q.minimizeDropsOk && Q.legsOk && Q.legs.chasePhaseMoved
-          && Q.moveDropsOk && Q.eyesOk;
+          && Q.moveDropsOk && Q.eyesOk && Q.titleChangeOkOk;
         out.sanity = Q;
         out.chatNoKey = await window.petHost.chatSend('hi');
         out.chatNoModel = (await window.petHost.testApi('hi')).error;

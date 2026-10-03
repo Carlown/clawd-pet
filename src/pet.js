@@ -165,8 +165,11 @@ const Pet = {
     if (prev.idle > 180 && w.idle < 8) { this.welcomeBack(prev.idle); return; }
     if (!w.supported || w.minimized || !w.rect) return;
     const title = w.title || '';
-    if (title === prev.title) return;                          // 还是那个窗口，不折腾
-    this.tryPeek(w.rect, title);
+    // 还是那个窗口就不折腾。有 hwnd 就认 hwnd（标题会变，句柄不会）；
+    // 老环境没 hwnd 才退回比标题。
+    if (w.hwnd && prev.hwnd) { if (w.hwnd === prev.hwnd) return; }
+    else if (title === prev.title) return;
+    this.tryPeek(w.rect, title, w.hwnd);
   },
 
   // 走到某个 x 就进入下一段（phase: wall = 走到墙根，top = 走到标题栏中间）
@@ -186,7 +189,7 @@ const Pet = {
   },
 
   // 你切窗口了 → 它爬到那个窗口的标题栏上去探头
-  tryPeek(rect, title) {
+  tryPeek(rect, title, hwnd) {
     if (!Settings.data.peek) return;
     if (this.drag || this.state === 'drag' || this.state === 'fall') return;
     if (this.state === 'chase' || this.state === 'climb' || this.state === 'peek') return;  // 已经在路上
@@ -213,6 +216,7 @@ const Pet = {
     this.climbTo = top;              // 先爬到标题栏高度
     this.climbThen = 'top';          // 到了再沿标题栏走到中间
     this.peekTitle = title || '';
+    this.peekHwnd = hwnd || '';
     this.peekFace = this.p.x <= wallL ? 1 : -1;   // 从左边上来就朝右看
     this.chaseTo(this.wallX, 'wall');
   },
@@ -225,7 +229,11 @@ const Pet = {
   dropIfPlatGone(w) {
     if (!this.plat) return false;
     if (!w || !w.supported || !!w.minimized || !w.rect) { this.leavePeek(true); return true; }
-    if ((w.title || '') !== this.peekTitle) { this.leavePeek(true); return true; }
+    // 同一个窗口怎么刷标题都不该掉：资源管理器里点进一个文件夹、浏览器换个标签页，
+    // 标题会变但窗口一动没动。所以判身份只看 hwnd —— 句柄换了才是真换窗口了。
+    // （拿不到 hwnd 的老环境下就退化成只看 rect，宁可多站一会儿，也别动不动就掉。）
+    const mine = this.peekHwnd || '';
+    if (mine && w.hwnd && w.hwnd !== mine) { this.leavePeek(true); return true; }
     // 拖动检测：容差 6px，躲开 rect 读取本身的抖动，但真拖一下就够抓到了
     const src = this.platRect;
     if (src) {
@@ -243,6 +251,8 @@ const Pet = {
     if (!this.plat || immediate) {
       const hadPlat = !!this.plat;
       this.plat = null;
+      this.platRect = null;
+      this.peekHwnd = '';
       this.phase = '';
       this.lastGround = null;
       if (hadPlat && Settings.data.gravity) { this.p.vy = 40; this.enter('fall'); }
