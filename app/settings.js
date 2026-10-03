@@ -2,10 +2,10 @@
 // 文案全在 ../src/i18n.js（和桌宠窗口、托盘共用一份），这里只管把 data-i18n 刷上去。
 'use strict';
 
-const IDS = ['walk', 'drag', 'gravity', 'look', 'idle', 'bubble', 'dance', 'peek', 'idleGreet', 'showName',
+const IDS = ['walk', 'drag', 'gravity', 'look', 'idle', 'bubble', 'dance', 'peek', 'peekGap', 'idleGreet', 'showName',
   'hat', 'color', 'size', 'name', 'lang', 'clickThrough', 'alwaysOnTop', 'autoLaunch',
   'chat', 'apiProvider', 'apiBase', 'apiModel', 'apiKey', 'temperature', 'systemPrompt'];
-const NUM = { size: Number, temperature: Number };
+const NUM = { size: Number, temperature: Number, peekGap: Number };
 const el = (id) => document.getElementById(id);
 const msg = (t, bad) => { const m = el('msg'); m.textContent = t; m.style.color = bad ? '#b4453a' : '#5a7d4a'; };
 

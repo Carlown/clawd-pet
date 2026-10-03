@@ -893,6 +893,8 @@ app.whenReady().then(() => {
         // ---- 下面这堆是“自己查出来、自己修掉”的 bug 的回归断言 ----
         const Q = {};
         const S0 = JSON.parse(JSON.stringify(Settings.data));
+        // B9/B11/B13 这些要反复 tryPeek，先把探头冷却关掉；B14 会自己开回来再关掉。
+        Settings.data.peekGap = 0; Settings.sanitize(); Pet.peekCool = 0;
         // B1/B2 右键菜单的尺寸列表以前是 [100,150,200,260]，设置窗下拉是 [90,120,150,200,260]。
         // 在菜单里选 100px 再去设置窗保存，下拉框没有这一项 → value 被置空 →
         // Number('')=0 → s=0，既画不出来也点不到，只能杀进程。现在两边同一份列表。
@@ -916,6 +918,8 @@ app.whenReady().then(() => {
         Q.petS0 = Pet.p.s;
         Q.petHit0 = Pet.hit(Pet.X(Pet.p.x), Pet.Y(Pet.p.y) - Pet.p.s * 0.47);
         Settings.data = S0; Pet.applySettings();
+        // 整份换回来会把我上面设的 peekGap=0 也冲掉，重新关一次（B14 会自己开回来再关掉）
+        Settings.data.peekGap = 0; Settings.sanitize(); Pet.peekCool = 0;
         // B3 英文断行：单词不能被拦腰截断（中文按字断不受影响）
         const enSrc = 'Still clocking in today and the deadline is tomorrow morning';
         const wrapped = handWrap(enSrc, 14, 140);
@@ -1046,6 +1050,48 @@ app.whenReady().then(() => {
           && !ttSwap.plat && ttSwap.state !== 'peek';
         for (let i = 0; i < 600; i++) { Pet.update(1 / 60); if (!Pet.plat) break; }
 
+        // ---- B14 探头之间要有冷却（关一个开一个，不能挨着挨着探）----
+        // 用户反馈：关掉一个窗口再打开另一个，它探完这个头马上又去探那个。
+        // 以前 peek 结束就完全回到“随时听命”，一秒一个样本 = 换个窗口就动一次。
+        // 现在探完要 peekGap 秒才接下一个活。
+        const gap0 = Settings.data.peekGap;
+        const mkPeek = (r) => {
+          Pet.plat = null; Pet.platRect = null; Pet.peekHwnd = ''; Pet.lastGround = null; Pet.peekCool = 0;
+          Pet.enter('idle'); Pet.p.y = Pet.floorY(); Pet.snapCam();
+          for (let i = 0; i < 120 && Pet.state !== 'idle'; i++) Pet.update(1 / 60);
+          Pet.tryPeek(r, '窗口', 'HWND_' + Math.round(r.x));
+          for (let i = 0; i < 3000 && Pet.state !== 'peek'; i++) Pet.update(1 / 60);
+        };
+        const clearPlat = () => { for (let i = 0; i < 3000; i++) { Pet.update(1 / 60); if (!Pet.plat) break; } };
+        // 第一趟：探完 → 冷却应该正好是 peekGap
+        Settings.data.peekGap = 20; Settings.sanitize();
+        mkPeek({ x: 200, y: Math.round(Pet.floorY()) - 300, w: 440, h: 380 });
+        const gp1 = { onPlat: !!Pet.plat, state: Pet.state, cool: Math.round(Pet.peekCool) };
+        clearPlat();
+        gp1.coolAfter = Math.round(Pet.peekCool);
+        // 冷却中：又来一个新窗口 → 不能动
+        const g2Rect = { x: 900, y: Math.round(Pet.floorY()) - 260, w: 460, h: 380 };
+        Pet.plat = null; Pet.enter('idle'); Pet.p.y = Pet.floorY();
+        Pet.tryPeek(g2Rect, '下一个窗口', 'HWND_NEXT');
+        const gp2 = { cool: Math.round(Pet.peekCool), plat: !!Pet.plat, state: Pet.state };
+        clearPlat();
+        // 冷却走完：再切一个 → 得动
+        Settings.data.peekGap = 5; Settings.sanitize();
+        Pet.peekCool = 0;
+        mkPeek({ x: 700, y: Math.round(Pet.floorY()) - 280, w: 430, h: 380 });
+        const gp3 = { onPlat: !!Pet.plat };
+        clearPlat();
+        const g3cool = Math.round(Pet.peekCool);
+        // peekGap=0 = 回到旧行为（一下都不限制）
+        Settings.data.peekGap = 0; Settings.sanitize();
+        Pet.startPeekCool();
+        const g4cool = Math.round(Pet.peekCool);
+        Q.peekGap = { after: gp1, during: gp2, next: gp3, cool5: g3cool, cool0: g4cool, choices: PEEK_GAPS.join(',') };
+        Q.peekGapOk = gp1.onPlat && gp1.coolAfter === 20 && gp2.cool > 0 && !gp2.plat && gp2.state !== 'chase'
+          && gp3.onPlat && g3cool === 5 && g4cool === 0;
+        Settings.data.peekGap = gap0; Settings.sanitize();
+        Pet.peekCool = 0;
+
         // ---- B12 眼睛不能因为身体镜像而看向反方向 ----
         // clawd 的基矩阵在 flip 时把 x 取反，而 exo 来自屏幕方向的 look[0]。
         // 不抵消的话：鼠标在右边、它朝左走时，眼睛会往左看（正好反了）。
@@ -1089,7 +1135,7 @@ app.whenReady().then(() => {
           && Q.bubbleInside && Q.linesCapped && Q.bubbleNormal && Q.textFitsOk
           && Q.promptFollowsLang && Q.promptKeptCustom && Q.hmmOk
           && Q.minimizeDropsOk && Q.legsOk && Q.legs.chasePhaseMoved
-          && Q.moveDropsOk && Q.eyesOk && Q.titleChangeOkOk;
+          && Q.moveDropsOk && Q.eyesOk && Q.titleChangeOkOk && Q.peekGapOk;
         out.sanity = Q;
         out.chatNoKey = await window.petHost.chatSend('hi');
         out.chatNoModel = (await window.petHost.testApi('hi')).error;

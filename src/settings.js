@@ -9,6 +9,9 @@ const SETTINGS_KEY = 'clawd.settings';
 // 浏览器会把 value 置空，Number('') = 0，桌宠当场消失而且再也点不到。
 const SIZE_CHOICES = [90, 120, 150, 200, 260];
 
+// 探头的间隔档位（秒）。设置窗下拉框和这里必须一致 —— 同 SIZE_CHOICES 的道理。
+const PEEK_GAPS = [0, 5, 10, 20, 45, 90];
+
 const DEFAULTS = {
   // ---- 行为开关（右键菜单里可逐个勾掉）----
   walk: true,          // 自主散步
@@ -19,6 +22,7 @@ const DEFAULTS = {
   bubble: true,        // 说话气泡
   dance: false,        // 踩点跳舞
   peek: true,          // 你切窗口时它爬到那个标题栏上探头张望
+  peekGap: 20,         // 探完一次歇多久再去探下一个（秒）。0 = 一刻不停地探
   idleGreet: true,     // 你锁屏离开再回来，它换个姿势打招呼
   chat: false,         // 「能不能聊天」总开关（双击/右键「聊两句…」会看这个）
   showName: true,      // 名牌开/关（与名牌文字分开）
@@ -64,6 +68,9 @@ const Settings = {
     } else d.size = sz;
     const tp = Number(d.temperature);
     d.temperature = isFinite(tp) ? Math.max(0, Math.min(2, tp)) : DEFAULTS.temperature;
+    // 探头间隔同理：负数/NaN/离谱的值都掰回合法档位（合法值见 PEEK_GAPS）
+    const gp = Number(d.peekGap);
+    d.peekGap = PEEK_GAPS.indexOf(gp) >= 0 ? gp : DEFAULTS.peekGap;
     if (I18N.LANGS.indexOf(d.lang) < 0) d.lang = 'zh';
     return d;
   },

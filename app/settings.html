@@ -41,6 +41,11 @@
 <label class="row"><input type="checkbox" id="peek"><span data-i18n="set.l.peek">切窗口就探头（它会爬到那个窗口的标题栏上张望）</span></label>
 <label class="row"><input type="checkbox" id="idleGreet"><span data-i18n="set.l.idleGreet">回来时打招呼（你锁屏走开再回来，它换个姿势迎你）</span></label>
 <p class="hint" id="peekStatus" data-i18n="set.peek.testing">正在检测能不能读到前台窗口…</p>
+<div class="grid" style="margin:6px 0 2px">
+  <label for="peekGap" data-i18n="set.f.peekGap">探头间隔</label>
+  <select id="peekGap"><option value="0">0</option><option value="5">5</option><option value="10">10</option><option value="20">20</option><option value="45">45</option><option value="90">90</option></select>   <!-- 秒，必须和 src/settings.js 的 PEEK_GAPS 一致 -->
+</div>
+<p class="hint" data-i18n="set.hint.peekGap">探完一次要歇这么多秒才会去探下一个窗口。关窗口开窗口挨着来的时候，调大一点它就不跟着每个窗口跑了。单位：秒。</p>
 <label class="row"><input type="checkbox" id="showName"><span data-i18n="set.l.showName">显示名牌（名字写在下面那栏）</span></label>
 
 <h2 data-i18n="set.h.look">长什么样</h2>

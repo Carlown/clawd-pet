@@ -33,6 +33,10 @@ const Pet = {
 
   // 探头张望用的临时"平台"：窗口标题栏那一行。plat 为 null 时站在正常地板上。
   plat: null, goal: 0, wallX: 0, climbFrom: 0, phase: '', peekTitle: '', peekFace: 1,
+  // 探头冷却：探完一次要歇一阵子再去探下一个。
+  // 以前没有这个 —— 你关一个窗口开一个窗口，它就顺着每一个新窗口挨个探一遍，
+  // 看着像被拽着到处跑，很吵。歇够 peekGap 秒才接下一个活。
+  peekCool: 0,
   watch: { title: '', locked: false, idle: 0, supported: false },
   watchSeen: false, away: 0,
   paused: false, pausedT: 0,                     // 右键菜单开着的时候先站住
@@ -191,6 +195,7 @@ const Pet = {
   // 你切窗口了 → 它爬到那个窗口的标题栏上去探头
   tryPeek(rect, title, hwnd) {
     if (!Settings.data.peek) return;
+    if (this.peekCool > 0) return;              // 刚探过，歇一会儿
     if (this.drag || this.state === 'drag' || this.state === 'fall') return;
     if (this.state === 'chase' || this.state === 'climb' || this.state === 'peek') return;  // 已经在路上
     const d = this.displayAt(clamp(rect.x, this.world.x0, this.world.x0 + this.world.w - 1));
@@ -214,6 +219,7 @@ const Pet = {
     this.wallX = Math.abs(this.p.x - wallL) <= Math.abs(this.p.x - wallR) ? wallL : wallR;
     this.climbFrom = this.p.y;
     this.climbTo = top;              // 先爬到标题栏高度
+    this.peekCool = 0;               // 接下这单的时候先把旧的冷却清了
     this.climbThen = 'top';          // 到了再沿标题栏走到中间
     this.peekTitle = title || '';
     this.peekHwnd = hwnd || '';
@@ -251,6 +257,7 @@ const Pet = {
     if (!this.plat || immediate) {
       const hadPlat = !!this.plat;
       this.plat = null;
+      if (hadPlat) this.startPeekCool();
       this.platRect = null;
       this.peekHwnd = '';
       this.phase = '';
@@ -267,6 +274,7 @@ const Pet = {
   reachFloor() {
     this.plat = null;
     this.phase = '';
+    this.startPeekCool();
     this.p.y = this.floorY();
     this.lastGround = this.p.y;
     this.p.vx = 0;
@@ -275,6 +283,12 @@ const Pet = {
 
   abortPeek() {
     if (this.plat) this.leavePeek(true);
+  },
+
+  // 开始计时：探完（或被打断落地）之后，peekGap 秒内不再接新活。
+  startPeekCool() {
+    const g = Math.max(0, Number(Settings.data.peekGap) || 0);
+    this.peekCool = g;
   },
 
   // 你锁屏走了一趟再回来 → 换个姿势跟你打个招呼
@@ -393,6 +407,7 @@ const Pet = {
   update(dt) {
     B.t += dt;
     this.st += dt;
+    if (this.peekCool > 0) this.peekCool -= dt;
     if (this.moodT > 0) { this.moodT -= dt; if (this.moodT <= 0) this.mood = null; }
     this.updateLook(dt);
     this.updateBubble(dt);
