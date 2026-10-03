@@ -26,8 +26,10 @@ public/favicon.svg
 桌宠要读前台窗口的标题，用的是 Win32 接口，所以**只支持 Windows**。站里不列别的系统，下载按钮直指 release 上那个真实的 exe：
 
 ```ts
-const exeUrl = `${repoUrl}/releases/download/v0.1.0/ClawdPet-0.1.0.exe`;
+const exeUrl = `${repoUrl}/releases/latest`;
 ```
+
+**不写死版本号**。写死 `/releases/download/v0.1.0/ClawdPet-0.1.0.exe` 的问题是：每发一版都得记得回来改，漏一次官网就在分发上一版的旧文件——而这种 bug 没人会发现，因为链接照样打得开，只是打开的是旧东西。`releases/latest` 由 GitHub 自己解析成最新正式版。代价只是点进去多一跳 release 页面，那页里正好有版本说明和 SmartScreen 的提醒。
 
 文案也按实际功能写，不写做不到的事：它不接 Claude、不读文件内容，聊天是默认关掉的、开了才用你自己填的接口。所以 FAQ 里说的是「每秒读一次前台窗口的标题文本」，不是「不读取任何信息」。
 

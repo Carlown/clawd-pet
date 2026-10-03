@@ -10,8 +10,11 @@ import petLogo from './assets/clawdpet.svg';
 import { langLabel, setLang, useLang, type Lang } from './i18n';
 
 const repoUrl = 'https://github.com/Carlown/clawd-pet';
-// v0.1.0 的真实产物：单文件 portable，自签名，68MB，不用安装。
-const exeUrl = `${repoUrl}/releases/download/v0.1.0/ClawdPet-0.1.0.exe`;
+// 指向 latest 而不是写死某个版本的 exe 路径：
+// 写死的话每发一版都得记得改这里，漏一次官网就在分发上一版的旧文件 ——
+// 而这种漏改没人会发现，因为链接照样打得开，只是打开的是旧东西。
+// latest 由 GitHub 自己解析成最新正式版，代价是点进去多一跳 release 页面。
+const exeUrl = `${repoUrl}/releases/latest`;
 
 function GithubIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.77-.24.77-.54v-2.1c-3.13.68-3.8-1.33-3.8-1.33-.5-1.3-1.24-1.64-1.24-1.64-1.02-.7.08-.69.08-.69 1.12.08 1.71 1.15 1.71 1.15 1 1.72 2.62 1.22 3.26.93.1-.73.4-1.23.71-1.51-2.5-.28-5.13-1.25-5.13-5.57 0-1.23.44-2.23 1.15-3.02-.12-.28-.5-1.43.11-2.98 0 0 .94-.3 3.08 1.15a10.7 10.7 0 0 1 5.61 0c2.14-1.45 3.08-1.15 3.08-1.15.61 1.55.23 2.7.12 2.98.72.79 1.15 1.8 1.15 3.02 0 4.33-2.64 5.28-5.15 5.56.41.36.77 1.04.77 2.09v3.11c0 .3.2.65.78.54A11.2 11.2 0 0 0 12 .8Z" /></svg>;
