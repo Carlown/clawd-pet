@@ -1,6 +1,6 @@
 {
   "name": "clawd-pet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "把 clawd.js 那只蜡笔小螃蟹做成桌面宠物",
   "main": "app/main.js",
   "private": true,
