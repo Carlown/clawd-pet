@@ -80,14 +80,22 @@ function workArea() {
   return screen.getPrimaryDisplay().workArea;
 }
 
+// 桌宠生成的默认位置：显示器横向 72% 处、贴工作区底部（底部多露 GROUND_PAD 给影子）。
+// createPetWindow 和开机后的 reanchorPet 共用这一份，别算成两套。
+function anchorXY(wa) {
+  return {
+    x: clampInt(Math.round(wa.x + wa.width * 0.72 - BOX.w / 2), wa.x, wa.x + wa.width - BOX.w),
+    y: clampInt(Math.round(wa.y + wa.height - BOX.h + GROUND_PAD), wa.y, wa.y + wa.height - BOX.h + GROUND_PAD),
+  };
+}
+
 function createPetWindow() {
   // 初始显示器 = 鼠标当前所在的那块（没鼠标就主屏），桌宠生成在它 72% 的地方
   const wa = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
-  const x = Math.round(wa.x + wa.width * 0.72 - BOX.w / 2);
-  const y = Math.round(wa.y + wa.height - BOX.h + GROUND_PAD);
+  const pos = anchorXY(wa);
   win = new BrowserWindow({
-    x: clampInt(x, wa.x, wa.x + wa.width - BOX.w),
-    y: clampInt(y, wa.y, wa.y + wa.height - BOX.h + GROUND_PAD),
+    x: pos.x,
+    y: pos.y,
     width: BOX.w, height: BOX.h,
     transparent: true, frame: false, resizable: false, movable: false,
     minimizable: false, maximizable: false, fullscreenable: false,
@@ -127,6 +135,45 @@ function createPetWindow() {
 }
 
 function clampInt(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+// 窗口的「露脸 / 收进托盘」只有下面这一对开关在管，userHidden 也只在这里改。
+// 以前托盘点击、托盘菜单、win:visible 三处各写一遍自己算 userHidden，
+// 只要有一处算歪（窗口最小化时 isVisible() 说的就不是「用户想不想藏」），
+// 露出/收起就对不上；而 userHidden 一旦不同步，鼠标跟随和探头那两条轮询会一起停摆，
+// 表现出来是「桌宠明明在屏幕上，却站着不动也不看鼠标」。
+function showPet(why) {
+  if (!win || win.isDestroyed()) return 'no-window';
+  const was = userHidden;
+  userHidden = false;
+  const did = [];
+  if (win.isMinimized()) { try { win.restore(); } catch (e) { /* noop */ } did.push('restore'); }
+  if (!win.isVisible()) { try { win.showInactive(); } catch (e) { /* noop */ } did.push('show'); }
+  if (did.length) { try { win.setAlwaysOnTop(true, 'screen-saver'); } catch (e) { /* noop */ } }
+  return (did.length ? did.join('+') : 'noop') + (was ? ' (was hidden)' : '') + (why ? ' [' + why + ']' : '');
+}
+
+function hidePet() {
+  if (!win || win.isDestroyed()) return 'no-window';
+  userHidden = true;
+  try { win.hide(); } catch (e) { /* noop */ }
+  return 'hidden';
+}
+
+// 托盘开关：按「屏幕上有没有」翻，而不是按 userHidden 翻——用户看到的就是屏幕
+function togglePet() {
+  if (!win || win.isDestroyed()) return 'no-window';
+  return win.isVisible() ? hidePet() : showPet('tray');
+}
+
+// 把桌宠重新锚回「鼠标所在那块屏的 72%/贴底」，并把新窗口信息推给渲染进程重新建坐标系
+function reanchorPet() {
+  if (!win || win.isDestroyed()) return null;
+  const wa = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
+  const at = anchorXY(wa);
+  const pos = moveWindowTo(at.x, at.y);
+  if (win && !win.isDestroyed()) win.webContents.send('win:info', windowInfo());
+  return pos;
+}
 
 // 快照落盘位置：开发时写 build/，打包后代码在 asar 里，build/ 不可写，改写 userData。
 function shotDir() {
@@ -184,12 +231,21 @@ function loginItemPath() {
   return (real && fs.existsSync(real)) ? real : app.getPath('exe');
 }
 
+// 自启要往注册表里写的那些参数，单独抽出来，自检能直接验它不带 --hidden。
+// 以前这里是 openAsHidden:true + args:['--hidden']，开机启动就直奔托盘 ——
+// 表现就是「开机后托盘里有个图标，桌面上什么都没有」，用户以为桌宠坏了。
+// 自启就该是一次正常启动，该露脸就露脸；想藏进托盘用户自己点托盘开关。
+function loginItemOptions(want) {
+  return { openAtLogin: !!want, path: loginItemPath() };
+}
+
 function applyAutoLaunch() {
-  const want = !!readSettings().autoLaunch;
-  const path = loginItemPath();
+  const opts = loginItemOptions(readSettings().autoLaunch);
+  // 自检跑在独立的 userData 上，它的 autoLaunch 默认是 false：真去写注册表就会把
+  // 用户自己的开机自启悄悄关掉。自检只看不写。
+  if (process.argv.includes('--selftest')) return false;
   try {
-    // openAsHidden 让开机启动时直接进托盘，不弹一个窗出来
-    app.setLoginItemSettings({ openAtLogin: want, openAsHidden: true, path, args: ['--hidden'] });
+    app.setLoginItemSettings(opts);
   } catch (e) {
     console.warn('[开机自启] 设置失败：', e && e.message);
     return false;
@@ -237,14 +293,14 @@ function createTray() {
   }
   tray.setToolTip('ClawdPet');
   tray.setContextMenu(buildTrayMenu());
-  tray.on('click', () => { if (!win) return; userHidden = win.isVisible(); userHidden ? win.hide() : win.showInactive(); });
+  tray.on('click', () => togglePet());
 }
 
 // 托盘菜单单独抽出来：切语言后要重建一次（setContextMenu 会立即替换）
 function buildTrayMenu() {
   const cur = readSettings().lang || 'zh';
   return Menu.buildFromTemplate([
-    { label: I18N.t('tray.toggle'), click: () => { if (!win) return; userHidden = win.isVisible(); userHidden ? win.hide() : win.showInactive(); } },
+    { label: I18N.t('tray.toggle'), click: () => togglePet() },
     { label: I18N.t('tray.recenter'), click: () => send('menu', 'recenter') },
     { type: 'separator' },
     { label: I18N.t('menu.lang'), submenu: I18N.LANGS.map((l) => ({
@@ -577,7 +633,7 @@ ipcMain.handle('win:move', (_e, pos) => moveWindowTo(pos.x, pos.y));
 // 注意：以前 win:visible 注册了两个处理器（一个改 userHidden 再 showInactive，
 // 一个 show/hide）。Electron 不会「后注册的覆盖先注册的」——两个都会跑，
 // 同一个开关被处理两次，userHidden 也被算了两遍。
-ipcMain.on('win:visible', (_e, v) => { if (win) { userHidden = !v; v ? win.showInactive() : win.hide(); } });
+ipcMain.on('win:visible', (_e, v) => { v ? showPet('ipc') : hidePet(); });
 ipcMain.on('win:apply-prefs', () => applyWindowPrefs());
 let menuOpen = false, menuFinish = null, lastMenu = null;
 
@@ -714,7 +770,33 @@ ipcMain.handle('chat:test', async (_e, text) => {
 });
 
 /* --------------------------------------------------------------- 启动 */
-app.on('second-instance', () => { if (win) { win.show(); } });
+// 开机自启这条路上，「进程起来了」不等于「桌宠在桌面上」。两个坑：
+//   ① 注册表里带着 --hidden 启动 → 窗口被 hide() 收进托盘，人在桌面上什么都看不见（老版本的锅）；
+//   ② 登录时 Explorer 还没就绪 → 窗口建出来了却没真正画出来，isVisible() 照样是 true，人就是看不见。
+// 所以启动后定点无条件补显三次（早的抓刚起来的壳，晚的抓壳稳下来之后）；
+// 定时器和自检共用下面这份逻辑，免得测的和跑的不是一个东西。
+let bootWa = null;
+const STARTUP_SHOWS = [0, 400, 2000];
+function startupShowPass() {
+  if (!win || win.isDestroyed()) return 'no-window';
+  if (userHidden) return 'user-hidden';            // 用户自己收进托盘了，别去打扰
+  const wa = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
+  // 开机早期拿到的工作区可能是错的（还没布局完），那种情况窗口会被摆到奇怪的位置
+  if (bootWa && (Math.abs(wa.width - bootWa.width) > 8 || Math.abs(wa.height - bootWa.height) > 8)) reanchorPet();
+  const r = showPet('boot');
+  // 壳还没就绪的时候，窗口会「建好了但没真正画出来」，isVisible() 照样是 true ——
+  // showPet 这情况不会动手，所以登录这条路上无条件再 show 一次（showInactive 不抢焦点）。
+  try { win.showInactive(); } catch (e) { /* noop */ }
+  try { win.setAlwaysOnTop(true, 'screen-saver'); } catch (e) { /* noop */ }
+  return r + (win.isVisible() ? '+forced' : ' (还是没显示)');
+}
+function startupShow() {
+  bootWa = null;
+  try { const wa = screen.getPrimaryDisplay().workArea; bootWa = { width: wa.width, height: wa.height }; } catch (e) { /* noop */ }
+  for (const ms of STARTUP_SHOWS) setTimeout(startupShowPass, ms);
+}
+
+app.on('second-instance', () => { showPet('second'); });
 app.whenReady().then(() => {
   // 先把语言定下来再建窗口，否则先开出来的那个标题/菜单是中文的
   I18N.setLang(readSettings().lang);
@@ -722,8 +804,7 @@ app.whenReady().then(() => {
   createTray();
   applyWindowPrefs();
   startWatch();
-  const hidden = process.argv.includes('--hidden');
-  if (hidden && win) { userHidden = true; win.hide(); }
+  startupShow();
   screen.on('display-metrics-changed', syncWindowToDisplay);
   screen.on('display-added', syncWindowToDisplay);
   screen.on('display-removed', syncWindowToDisplay);
@@ -1143,6 +1224,48 @@ app.whenReady().then(() => {
       })()`;
       try {
         console.log('SELFTEST', await win.webContents.executeJavaScript(probe));
+
+        // ---- B15 开机自启：起完必须真在屏幕上，不能只剩一个托盘图标 ----
+        // 用户反馈「自启动启动了之后托盘会看到，但它不显示在桌面上」。
+        // ① 老的自启项带着 --hidden，起来就被收进托盘 —— 现在注册表里根本不许再写这个参数，
+        //    而万一还有别处/别的机器传了这个参数，窗口也必须照样显示（把这一轮用
+        //    `npm start -- --selftest --hidden` 跑一遍就能验到那条）；
+        // ② 登录时壳还没就绪，窗口建好了却没画出来 —— 启动补显得能把它拉回来。
+        const bootOut = { argvHidden: process.argv.includes('--hidden'), loginItem: loginItemOptions(true) };
+        bootOut.loginArgs = bootOut.loginItem.args || [];
+        bootOut.noHiddenArgs = bootOut.loginArgs.indexOf('--hidden') < 0 && !bootOut.loginItem.openAsHidden;
+        bootOut.startupVisible = win.isVisible();      // 自检跑到这儿，窗口必须已经在屏幕上
+        bootOut.startupUserHidden = userHidden;
+        // 这一轮若是带着 --hidden 起的（`npm start -- --selftest --hidden`），
+        // startupVisible 就是「老版开机场景」的正身：必须是 true
+        bootOut.hiddenArgOk = !bootOut.argvHidden || bootOut.startupVisible;
+        // 模拟 ②：窗口被藏住了，但「用户没要求藏」（userHidden 得是 false，
+        // 不然补显分不清是开机藏的还是用户自己收的）。
+        // 必须同一个 tick 里查：win.on('hide') 里那个 revive 隔 80ms 也会拉它一把，
+        // 中间 await 一下就分不清到底是谁干的。
+        userHidden = false; win.hide();
+        bootOut.wasVisible = win.isVisible();          // 必须是 false，否则这场景没复现出来
+        bootOut.pass = startupShowPass();
+        bootOut.nowVisible = win.isVisible();
+        bootOut.userHidden = userHidden;
+        // 反过来：用户自己点托盘收起来了 —— 那个 80ms 的 revive 不许插手，
+        // 启动补显也不许去打扰它
+        bootOut.hiddenOnPurpose = hidePet();
+        await new Promise((r) => setTimeout(r, 200));
+        bootOut.watchdogHeld = !win.isVisible();
+        bootOut.passWhileHidden = startupShowPass();
+        bootOut.staysHidden = !win.isVisible() && userHidden === true;
+        // 托盘开关翻两下，露脸/收起和 userHidden 永远得对上
+        bootOut.showAgain = togglePet();
+        bootOut.showsOk = win.isVisible() && userHidden === false;
+        bootOut.hideAgain = togglePet();
+        bootOut.hidesOk = !win.isVisible() && userHidden === true;
+        togglePet();                                   // 收尾：自检跑完别留个藏起来的桌宠
+        bootOut.ok = bootOut.noHiddenArgs && bootOut.startupVisible && !bootOut.startupUserHidden
+          && bootOut.hiddenArgOk && !bootOut.wasVisible && bootOut.nowVisible && !bootOut.userHidden
+          && bootOut.watchdogHeld && bootOut.staysHidden && bootOut.showsOk && bootOut.hidesOk;
+        console.log('BOOT', JSON.stringify(bootOut));
+
         // 菜单开着时它应该站住不动（右键卡死那个 bug 的配套行为）
         send('menu:state', true);
         await new Promise((r) => setTimeout(r, 150));
